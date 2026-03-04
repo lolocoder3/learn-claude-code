@@ -12,7 +12,7 @@ MODEL = "deepseek-chat"
 if __name__ == "__main__":
     message = []
     q = input("User>> ")
-        
+
     message.append({"role": "user", "content": q})
     messageFromLLM = client.messages.create(
         model=MODEL,
