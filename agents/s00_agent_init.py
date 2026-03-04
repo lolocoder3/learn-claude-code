@@ -36,8 +36,13 @@ if __name__ == "__main__":
         
         history.append({"role": "user", "content": query})
         agent_loop(history)
+        
+        # 打印助手回复
+        # 方法1：直接打印整个content对象（包含元数据）
+        # print(history[-1]["content"])
+        
+        # 方法2：只打印文本内容（更简洁）
         for block in history[-1]["content"]:
-        # 只打印文本类型的块
             if hasattr(block, "text"):
                 print(block.text)
 
