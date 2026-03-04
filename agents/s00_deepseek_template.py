@@ -1,7 +1,7 @@
 import anthropic
-
 from dotenv import load_dotenv
 
+# 读取env中的api-key
 load_dotenv(override=True)
 
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
@@ -24,4 +24,4 @@ message = client.messages.create(
     ]
 )
 
-print(message.content)
+print(message.content[0].text)
