@@ -10,23 +10,15 @@ client = Anthropic(base_url="https://api.deepseek.com/anthropic")
 MODEL = "deepseek-chat"
 
 if __name__ == "__main__":
-    history = []
-    while True:
-        q = input("User>> ")
+    message = []
+    q = input("User>> ")
         
-        history.append({"role": "user", "content": q})
-        r = client.messages.create(
-            model=MODEL,
-            system=f"You are a helpful assistant..",
-            messages=history,
-            max_tokens=8000,
-        )
-        history.append({"role": "assistant", "content": r.content})
-        content = r.content
-        
-        for block in history[-1]["content"]:
-        # 只打印文本类型的块
-            if hasattr(block, "text"):
-                print(block.text)
+    message.append({"role": "user", "content": q})
+    messageFromLLM = client.messages.create(
+        model=MODEL,
+        system=f"You are a helpful assistant..",
+        messages=message,
+        max_tokens=8000,
+    )
 
-        print()
+    print(messageFromLLM.content[0].text)
