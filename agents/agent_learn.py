@@ -33,7 +33,8 @@ def conversation(history):
 
     response_text = messageFromLLM.content[0].text
     history.append({"role": "assistant", "content": response_text})
-    if(messageFromLLM.stop_reason == "tool_use"):
+    if(messageFromLLM.stop_reason != "tool_use"):
+        return
         print("messageFromLLM.content===>",messageFromLLM.content)
     for block in messageFromLLM.content:
         if block.type == "tool_use":
