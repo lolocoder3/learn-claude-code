@@ -35,7 +35,11 @@ def conversation(history):
     history.append({"role": "assistant", "content": response_text})
     if(messageFromLLM.stop_reason == "tool_use"):
         print(messageFromLLM.content)
-    
+    for block in messageFromLLM.content:
+        if block.type == "tool_use":
+            print(f"\033[33m$ show_location\033[0m")
+            output = show_location()
+            print(output)
 
 while True:
     print("===> ", history)
