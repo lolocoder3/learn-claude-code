@@ -57,20 +57,9 @@ while True:
 
     history.append({"role": "user", "content": query})
     conversation(history)
-    print(history[-1]["content"])
+    response_content = history[-1]["content"]
+    if isinstance(response_content, list):
+        for block in response_content:
+            if hasattr(block, "text"):
+                print(block.text)
     print()
-
-# __问题分析：__ 错误信息显示：`unexpected tool_use_id found in tool_result blocks. Each tool_result block must have a corresponding tool_use block in the previous message.`
-
-# __根本原因：__ 在 `agent_learn.py` 的 `conversation` 函数中，代码只将模型的文本响应添加到历史记录中，而没有包含 `tool_use` 块。具体来说：
-
-# 1. 原始代码：`history.append({"role": "assistant", "content": response_text})` - 只添加了文本
-# 2. 当模型调用工具时，会生成 `tool_use` 块，但这些块没有被添加到历史记录中
-# 3. 后续发送 `tool_result` 时，API找不到对应的 `tool_use` 块，导致400错误
-
-# __解决方案：__ 将代码修改为：`history.append({"role": "assistant", "content": messageFromLLM.content})` 这样会将整个响应内容（包括 `tool_use` 块）添加到历史记录中，确保 `tool_result` 有对应的 `tool_use` 块。
-
-# __测试结果：__ 修复后程序运行正常，可以正确处理工具调用：
-
-# - 输入"我在哪" → 调用 `show_location` 工具 → 返回"your location is shanghai"
-# - 后续对话正常进行，没有出现错误
