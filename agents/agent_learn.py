@@ -19,7 +19,7 @@ while True:
         messages=history,
     )
 
-    result = messageFromLLM.content[0].text
-    history.append({"role": "assistant", "content": result})
-    print(result)
+    response_text = messageFromLLM.content[0].text
+    history.append({"role": "assistant", "content": response_text})
+    print(history[-1]["content"])
     print()
