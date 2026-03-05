@@ -40,6 +40,7 @@ def conversation(history):
             print(f"\033[33m$ show_location\033[0m")
             output = show_location()
             print(output)
+            print("message===> ",messageFromLLM)
 
 while True:
     print("===> ", history)
