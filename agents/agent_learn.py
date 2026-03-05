@@ -7,13 +7,15 @@ load_dotenv(override=True)
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
+q = input("User>> ")
+
 messageFromLLM = client.messages.create(
     model=model,
     max_tokens=1000,
     system="You are a helpful assistant.",
     messages=[
         {"role": "user", "content": [
-            {"type": "text", "text": "Hi, how are you?"}]}
+            {"type": "text", "text": q }]}
     ],
 )
 
