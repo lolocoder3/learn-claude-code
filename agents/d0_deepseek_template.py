@@ -9,7 +9,7 @@ model = "deepseek-chat"
 
 messageFromLLM = client.messages.create(
     model="deepseek-chat",
-    max_tokens=1000,
+    max_tokens=8000,
     system="You are a helpful assistant.",
     messages=[
         {"role": "user", "content": [{"type": "text", "text": "Hi, how are you?"}]}

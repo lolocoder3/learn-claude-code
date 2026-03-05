@@ -14,7 +14,7 @@ while True:
     history.append({"role": "user", "content": query})
     messageFromLLM = client.messages.create(
         model=model,
-        max_tokens=1000,
+        max_tokens=8000,
         system="You are a helpful assistant.",
         messages=history,
     )
