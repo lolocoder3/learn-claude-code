@@ -9,6 +9,7 @@ model = "deepseek-chat"
 
 history = []
 
+
 def conversation(history):
     messageFromLLM = client.messages.create(
         model=model,
@@ -20,9 +21,16 @@ def conversation(history):
     response_text = messageFromLLM.content[0].text
     history.append({"role": "assistant", "content": response_text})
 
+
 while True:
     print("===> ", history)
-    query = input("User>> ")
+    try:
+        query = input("\033[36ms01 >> \033[0m")
+    except (EOFError, KeyboardInterrupt):
+        break
+
+    if query.strip().lower() in ("q", "exit",""):
+        break
 
     history.append({"role": "user", "content": query})
     conversation(history)
