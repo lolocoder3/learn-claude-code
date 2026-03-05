@@ -7,16 +7,17 @@ load_dotenv(override=True)
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-q = input("User>> ")
+while True:
+    q = input("User>> ")
 
-messageFromLLM = client.messages.create(
-    model=model,
-    max_tokens=1000,
-    system="You are a helpful assistant.",
-    messages=[
-        {"role": "user", "content": [
-            {"type": "text", "text": q }]}
-    ],
-)
+    messageFromLLM = client.messages.create(
+        model=model,
+        max_tokens=1000,
+        system="You are a helpful assistant.",
+        messages=[
+            {"role": "user", "content": [
+                {"type": "text", "text": q }]}
+        ],
+    )
 
-print(messageFromLLM.content[0].text)
+    print(messageFromLLM.content[0].text)
