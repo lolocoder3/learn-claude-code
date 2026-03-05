@@ -41,8 +41,6 @@ def conversation(history):
             print(f"\033[33m$ show_location\033[0m")
             output = show_location()
             print(output)
-            tool_result = {"type": "tool_result", "tool_use_id": block.id,
-                                "content": output}
             results.append({"type": "tool_result", "tool_use_id": block.id,
                                 "content": output})
     history.append({"role": "user", "content": results})
