@@ -33,7 +33,9 @@ def conversation(history):
 
     response_text = messageFromLLM.content[0].text
     history.append({"role": "assistant", "content": response_text})
-
+    if(messageFromLLM.stop_reason == "tool_use"):
+        print(messageFromLLM.content)
+    
 
 while True:
     print("===> ", history)
@@ -49,15 +51,3 @@ while True:
     conversation(history)
     print(history[-1]["content"])
     print()
-
-# what tools you have
-# I have access to one tool:
-
-# **show_location** - This tool allows me to show your current location. When you ask about location-related information, I can use this tool to provide you with details about where you are.
-
-# I can also help with a wide variety of other tasks like answering questions, explaining concepts, helping with writing, analysis, problem-solving, and more - though for those I rely on my general knowledge and reasoning abilities rather than specific tools.
-
-# What would you like help with today?
-
-# 我现在在哪里
-# 我来帮你查看当前位置。
