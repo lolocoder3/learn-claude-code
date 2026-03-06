@@ -12,8 +12,6 @@ model = "deepseek-chat"
 
 SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
 
-history = []
-
 TOOLS = [{
     "name": "bash",
     "description": "Run a shell command.",
@@ -37,7 +35,7 @@ def run_bash(command: str) -> str:
         return "Error: Timeout (120s)"
 
 
-def conversation(history):
+def agent_loop(history):
     while True:
         messageFromLLM = client.messages.create(
             model=model,
@@ -61,20 +59,22 @@ def conversation(history):
                                     "content": output})
         history.append({"role": "user", "content": results})
 
-while True:
-    try:
-        query = input("\033[36ms01 >> \033[0m")
-    except (EOFError, KeyboardInterrupt):
-        break
+if __name__ == "__main__":
+    history = []
+    while True:
+        try:
+            query = input("\033[36ms01 >> \033[0m")
+        except (EOFError, KeyboardInterrupt):
+            break
 
-    if query.strip().lower() in ("q", "exit",""):
-        break
+        if query.strip().lower() in ("q", "exit",""):
+            break
 
-    history.append({"role": "user", "content": query})
-    conversation(history)
-    response_content = history[-1]["content"]
-    if isinstance(response_content, list):
-        for block in response_content:
-            if hasattr(block, "text"):
-                print(block.text)
-    print()
+        history.append({"role": "user", "content": query})
+        agent_loop(history)
+        response_content = history[-1]["content"]
+        if isinstance(response_content, list):
+            for block in response_content:
+                if hasattr(block, "text"):
+                    print(block.text)
+        print()
