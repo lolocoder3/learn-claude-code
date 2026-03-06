@@ -1,3 +1,6 @@
+import os
+import subprocess
+
 import anthropic
 from dotenv import load_dotenv
 
@@ -7,19 +10,31 @@ load_dotenv(override=True)
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
+SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
+
 history = []
 
 TOOLS = [{
-    "name": "show_location",
-    "description": "show user's location",
+    "name": "bash",
+    "description": "Run a shell command.",
     "input_schema": {
         "type": "object",
-        "properties": {},
+        "properties": {"command": {"type": "string"}},
+        "required": ["command"],
     },
 }]
 
-def show_location():
-    return "your location is shanghai"
+def run_bash(command: str) -> str:
+    dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
+    if any(d in command for d in dangerous):
+        return "Error: Dangerous command blocked"
+    try:
+        r = subprocess.run(command, shell=True, cwd=os.getcwd(),
+                           capture_output=True, text=True, timeout=120)
+        out = (r.stdout + r.stderr).strip()
+        return out[:50000] if out else "(no output)"
+    except subprocess.TimeoutExpired:
+        return "Error: Timeout (120s)"
 
 
 def conversation(history):
@@ -38,12 +53,13 @@ def conversation(history):
     results = []
     for block in messageFromLLM.content:
         if block.type == "tool_use":
-            print(f"\033[33m$ show_location\033[0m")
-            output = show_location()
-            print(output)
+            print(f"\033[33m$ {block.input['command']}\033[0m")
+            output = run_bash(block.input["command"])
+            print(output[:200])
             results.append({"type": "tool_result", "tool_use_id": block.id,
                                 "content": output})
     history.append({"role": "user", "content": results})
+
 while True:
     try:
         query = input("\033[36ms01 >> \033[0m")
@@ -61,3 +77,26 @@ while True:
             if hasattr(block, "text"):
                 print(block.text)
     print()
+
+# 运行generate hello.py for me，发现没有生成对应的文件。
+# $ python agent_learn.py
+# s01 >> generate hello.py for me
+# $ cat > hello.py << 'EOF'
+# #!/usr/bin/env python3
+# # hello.py - A simple Python script
+
+# def main():
+#     """Main function that prints a greeting."""
+#     print("Hello, World!")
+#     print("Welcome to Python programming!")
+
+#     # You can add more functionality here
+#     name = input("What's your name? ")
+#     print(f"Nice to meet you, {name}!")
+
+# if __name__ == "__main__":
+#     main()
+# EOF
+# 此时不应有 <<。
+
+# s01 >>
