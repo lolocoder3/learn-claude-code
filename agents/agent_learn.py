@@ -38,27 +38,28 @@ def run_bash(command: str) -> str:
 
 
 def conversation(history):
-    messageFromLLM = client.messages.create(
-        model=model,
-        max_tokens=8000,
-        system="You are a helpful assistant.",
-        messages=history,
-        tools=TOOLS,
-    )
+    while True:
+        messageFromLLM = client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system="You are a helpful assistant.",
+            messages=history,
+            tools=TOOLS,
+        )
 
-     # 添加整个assistant响应（包括tool_use块）
-    history.append({"role": "assistant", "content": messageFromLLM.content})
-    if(messageFromLLM.stop_reason != "tool_use"):
-        return
-    results = []
-    for block in messageFromLLM.content:
-        if block.type == "tool_use":
-            print(f"\033[33m$ {block.input['command']}\033[0m")
-            output = run_bash(block.input["command"])
-            print(output[:200])
-            results.append({"type": "tool_result", "tool_use_id": block.id,
-                                "content": output})
-    history.append({"role": "user", "content": results})
+        # 添加整个assistant响应（包括tool_use块）
+        history.append({"role": "assistant", "content": messageFromLLM.content})
+        if(messageFromLLM.stop_reason != "tool_use"):
+            return
+        results = []
+        for block in messageFromLLM.content:
+            if block.type == "tool_use":
+                print(f"\033[33m$ {block.input['command']}\033[0m")
+                output = run_bash(block.input["command"])
+                print(output[:200])
+                results.append({"type": "tool_result", "tool_use_id": block.id,
+                                    "content": output})
+        history.append({"role": "user", "content": results})
 
 while True:
     try:
@@ -77,26 +78,3 @@ while True:
             if hasattr(block, "text"):
                 print(block.text)
     print()
-
-# 运行generate hello.py for me，发现没有生成对应的文件。
-# $ python agent_learn.py
-# s01 >> generate hello.py for me
-# $ cat > hello.py << 'EOF'
-# #!/usr/bin/env python3
-# # hello.py - A simple Python script
-
-# def main():
-#     """Main function that prints a greeting."""
-#     print("Hello, World!")
-#     print("Welcome to Python programming!")
-
-#     # You can add more functionality here
-#     name = input("What's your name? ")
-#     print(f"Nice to meet you, {name}!")
-
-# if __name__ == "__main__":
-#     main()
-# EOF
-# 此时不应有 <<。
-
-# s01 >>
