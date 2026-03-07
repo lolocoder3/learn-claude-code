@@ -58,6 +58,7 @@ TOOLS = [
 
 
 def run_bash(command: str) -> str:
+    print(f"\033[33m$ run_bash tools is excuted\033[0m")
     dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
     if any(d in command for d in dangerous):
         return "Error: Dangerous command blocked"
