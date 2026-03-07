@@ -130,3 +130,16 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+# read current file there is a issue
+# reproduce is below
+
+# s01 >> read current file
+
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 126, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 105, in agent_loop
+#     print(f"\033[33m$ {block.input['command']}\033[0m")
+#                        ~~~~~~~~~~~^^^^^^^^^^^
+# KeyError: 'command'
