@@ -56,16 +56,20 @@ TOOLS = [
     },
 ]
 
+
 def read_file(path: str) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
     print("path :" + path)
     return "hello world"
 
+
 def write_file(command: str) -> None:
     print(f"\033[33m$ write_file tools is excuted\033[0m")
 
+
 def edit_file(command: str) -> None:
     print(f"\033[33m$ edit_file tools is excuted\033[0m")
+
 
 def run_bash(command: str) -> str:
     print(f"\033[33m$ run_bash tools is excuted\033[0m")
@@ -79,6 +83,8 @@ def run_bash(command: str) -> str:
             cwd=os.getcwd(),
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=120,
         )
         out = (r.stdout + r.stderr).strip()
@@ -109,12 +115,20 @@ def agent_loop(history):
                     output = run_bash(block.input["command"])
                     print(output[:200])
                     results.append(
-                        {"type": "tool_result", "tool_use_id": block.id, "content": output}
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": output,
+                        }
                     )
                 elif block.name == "read_file":
                     output = read_file(block.input["path"])
                     results.append(
-                        {"type": "tool_result", "tool_use_id": block.id, "content": output}
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": output,
+                        }
                     )
         # print(history)
         history.append({"role": "user", "content": results})
@@ -139,41 +153,35 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-#find a new issue 
-# see current file
-# $ ls -la
-# $ run_bash tools is excuted
-# total 312
-# drwxr-xr-x 1 lolom 197609     0 Mar  7 18:28 .
-# drwxr-xr-x 1 lolom 197609     0 Mar  7 17:48 ..
-# -rw-r--r-- 1 lolom 197609   150 Mar  3 16:24 __init__.py
-# drwxr-xr-x 1 lolom 197609     0 Mar  7
+
+# 已成功修复UnicodeDecodeError: 'gbk' codec can't decode byte 0xad in position 97错误。
+
+# __问题分析：__
+
+# 1. 错误发生在`agents/agent_learn.py`文件的`run_bash`函数中
+# 2. 当执行`head -c 200 agent_learn.py`命令时，输出包含UTF-8编码的中文字符
+# 3. `subprocess.run`使用`text=True`参数时，默认使用系统编码（Windows上是GBK）解码输出
+# 4. 当`head -c 200`在UTF-8多字节序列中间截断时，会产生无效的GBK字节序列
+
+# __修复方案：__ 在`subprocess.run`调用中明确指定编码参数：
+
+# - `encoding='utf-8'`：使用UTF-8编码解码命令输出
+# - `errors='replace'`：遇到无法解码的字符时用替换字符（�）代替，避免崩溃
+
+# __测试结果：__ 修复后的程序可以正常运行，不再出现编码错误。测试命令`head -c 200 agent_learn.py`现在可以正确输出文件内容的前200个字符。
+
+# $ python agent_learn.py 
+# s01 >> what content in agent_learn.py
 # $ read_file tools is excuted
 # path :agent_learn.py
-# $ wc -l agent_learn.py
-# $ run_bash tools is excuted
-# 164 agent_learn.py
-# $ head -20 agent_learn.py
-# $ run_bash tools is excuted
-# Exception in thread Thread-5 (_readerthread):
-# Traceback (most recent call last):
-#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1082, in _bootstrap_inner
-#     self._context.run(self.run)
-#     ~~~~~~~~~~~~~~~~~^^^^^^^^^^
-#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\threading.py", line 1024, in run
-#     self._target(*self._args, **self._kwargs)
-#     ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\subprocess.py", line 1613, in _readerthread
-#     buffer.append(fh.read())
-#                   ~~~~~~~^^
-# UnicodeDecodeError: 'gbk' codec can't decode byte 0xad in position 97: illegal multibyte sequence
-# Traceback (most recent call last):
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 135, in <module>
-#     agent_loop(history)
-#     ~~~~~~~~~~^^^^^^^^^
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 109, in agent_loop
-#     output = run_bash(block.input["command"])
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 84, in run_bash
-#     out = (r.stdout + r.stderr).strip()
-#            ~~~~~~~~~^~~~~~~~~~
-# TypeError: unsupported operand type(s) for +: 'NoneType' and 'str'
+# The file `agent_learn.py` contains the text "hello world".
+
+# s01 >> show me the content of agent_learn.py
+# $ read_file tools is excuted
+# path :agent_learn.py
+# The file `agent_learn.py` contains the text "hello world".
+
+# s01 >> I want to know see this current file
+# $ read_file tools is excuted
+# path :agent_learn.py
+# The current content of `agent_learn.py` is "hello world".
