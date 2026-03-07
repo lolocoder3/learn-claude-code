@@ -1,6 +1,7 @@
 import os
 import subprocess
 
+from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
 
@@ -59,8 +60,9 @@ TOOLS = [
 
 def read_file(path: str) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
-    print("path :" + path)
-    return "hello world"
+    text = (Path.cwd() / path).resolve().read_text()
+    lines = text.splitlines()
+    return "\n".join(lines)[:50000]
 
 
 def write_file(command: str) -> None:
@@ -154,34 +156,19 @@ if __name__ == "__main__":
                     print(block.text)
         print()
 
-# 已成功修复UnicodeDecodeError: 'gbk' codec can't decode byte 0xad in position 97错误。
-
-# __问题分析：__
-
-# 1. 错误发生在`agents/agent_learn.py`文件的`run_bash`函数中
-# 2. 当执行`head -c 200 agent_learn.py`命令时，输出包含UTF-8编码的中文字符
-# 3. `subprocess.run`使用`text=True`参数时，默认使用系统编码（Windows上是GBK）解码输出
-# 4. 当`head -c 200`在UTF-8多字节序列中间截断时，会产生无效的GBK字节序列
-
-# __修复方案：__ 在`subprocess.run`调用中明确指定编码参数：
-
-# - `encoding='utf-8'`：使用UTF-8编码解码命令输出
-# - `errors='replace'`：遇到无法解码的字符时用替换字符（�）代替，避免崩溃
-
-# __测试结果：__ 修复后的程序可以正常运行，不再出现编码错误。测试命令`head -c 200 agent_learn.py`现在可以正确输出文件内容的前200个字符。
-
-# $ python agent_learn.py 
-# s01 >> what content in agent_learn.py
-# $ read_file tools is excuted
-# path :agent_learn.py
-# The file `agent_learn.py` contains the text "hello world".
-
+#meet issue gbk
+# $ python agent_learn.py
 # s01 >> show me the content of agent_learn.py
 # $ read_file tools is excuted
-# path :agent_learn.py
-# The file `agent_learn.py` contains the text "hello world".
-
-# s01 >> I want to know see this current file
-# $ read_file tools is excuted
-# path :agent_learn.py
-# The current content of `agent_learn.py` is "hello world".
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 152, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 128, in agent_loop
+#     output = read_file(block.input["path"])
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 64, in read_file
+#     text = (Path.cwd() / path).resolve().read_text()
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\pathlib\__init__.py", line 788, in read_text
+#     return f.read()
+#            ~~~~~~^^
+# UnicodeDecodeError: 'gbk' codec can't decode byte 0xad in position 123: illegal multibyte sequence
