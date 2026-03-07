@@ -102,6 +102,7 @@ def agent_loop(history):
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
+                print(block)
                 print(f"\033[33m$ {block.input['command']}\033[0m")
                 output = run_bash(block.input["command"])
                 print(output[:200])
@@ -130,16 +131,7 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-# read current file there is a issue
-# reproduce is below
-
+# add print and see ToolUseBlock is without "command" in input
 # s01 >> read current file
 
-# Traceback (most recent call last):
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 126, in <module>
-#     agent_loop(history)
-#     ~~~~~~~~~~^^^^^^^^^
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 105, in agent_loop
-#     print(f"\033[33m$ {block.input['command']}\033[0m")
-#                        ~~~~~~~~~~~^^^^^^^^^^^
-# KeyError: 'command'
+# ToolUseBlock(id='call_00_jASRldZ2RcSfHJI3UgbYbTT5', caller=None, input={'path': '.'}, name='read_file', type='tool_use')
