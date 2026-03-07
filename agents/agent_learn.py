@@ -56,6 +56,14 @@ TOOLS = [
     },
 ]
 
+def read_file(command: str) -> None:
+    print(f"\033[33m$ read_file tools is excuted\033[0m")
+
+def write_file(command: str) -> None:
+    print(f"\033[33m$ write_file tools is excuted\033[0m")
+
+def edit_file(command: str) -> None:
+    print(f"\033[33m$ edit_file tools is excuted\033[0m")
 
 def run_bash(command: str) -> str:
     print(f"\033[33m$ run_bash tools is excuted\033[0m")
