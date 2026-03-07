@@ -12,15 +12,17 @@ model = "deepseek-chat"
 
 SYSTEM = f"You are a coding agent at {os.getcwd()}. Use bash to solve tasks. Act, don't explain."
 
-TOOLS = [{
-    "name": "bash",
-    "description": "Run a shell command.",
-    "input_schema": {
-        "type": "object",
-        "properties": {"command": {"type": "string"}},
-        "required": ["command"],
-    },
-}]
+TOOLS = [
+    {
+        "name": "bash",
+        "description": "Run a shell command.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"command": {"type": "string"}},
+            "required": ["command"],
+        },
+    }
+]
 
 
 def run_bash(command: str) -> str:
@@ -28,8 +30,14 @@ def run_bash(command: str) -> str:
     if any(d in command for d in dangerous):
         return "Error: Dangerous command blocked"
     try:
-        r = subprocess.run(command, shell=True, cwd=os.getcwd(),
-                           capture_output=True, text=True, timeout=120)
+        r = subprocess.run(
+            command,
+            shell=True,
+            cwd=os.getcwd(),
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
         out = (r.stdout + r.stderr).strip()
         return out[:50000] if out else "(no output)"
     except subprocess.TimeoutExpired:
@@ -47,9 +55,8 @@ def agent_loop(history):
         )
 
         # 添加整个assistant响应（包括tool_use块）
-        history.append(
-            {"role": "assistant", "content": messageFromLLM.content})
-        if (messageFromLLM.stop_reason != "tool_use"):
+        history.append({"role": "assistant", "content": messageFromLLM.content})
+        if messageFromLLM.stop_reason != "tool_use":
             return
         results = []
         for block in messageFromLLM.content:
@@ -57,8 +64,9 @@ def agent_loop(history):
                 print(f"\033[33m$ {block.input['command']}\033[0m")
                 output = run_bash(block.input["command"])
                 print(output[:200])
-                results.append({"type": "tool_result", "tool_use_id": block.id,
-                                "content": output})
+                results.append(
+                    {"type": "tool_result", "tool_use_id": block.id, "content": output}
+                )
         history.append({"role": "user", "content": results})
 
 
