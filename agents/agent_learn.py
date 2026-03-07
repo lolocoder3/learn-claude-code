@@ -56,8 +56,10 @@ TOOLS = [
     },
 ]
 
-def read_file(command: str) -> None:
+def read_file(path: str) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
+    print("path :" + path)
+    return "hello world"
 
 def write_file(command: str) -> None:
     print(f"\033[33m$ write_file tools is excuted\033[0m")
@@ -103,12 +105,19 @@ def agent_loop(history):
         for block in messageFromLLM.content:
             if block.type == "tool_use":
                 print(block)
-                print(f"\033[33m$ {block.input['command']}\033[0m")
-                output = run_bash(block.input["command"])
-                print(output[:200])
-                results.append(
-                    {"type": "tool_result", "tool_use_id": block.id, "content": output}
-                )
+                if block.name == "run_bash":
+                    print(f"\033[33m$ {block.input['command']}\033[0m")
+                    output = run_bash(block.input["command"])
+                    print(output[:200])
+                    results.append(
+                        {"type": "tool_result", "tool_use_id": block.id, "content": output}
+                    )
+                elif block.name == "read_file":
+                    output = read_file(block.input["path"])
+                    results.append(
+                        {"type": "tool_result", "tool_use_id": block.id, "content": output}
+                    )
+        print(history)
         history.append({"role": "user", "content": results})
 
 
@@ -131,7 +140,42 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-# add print and see ToolUseBlock is without "command" in input
-# s01 >> read current file
 
-# ToolUseBlock(id='call_00_jASRldZ2RcSfHJI3UgbYbTT5', caller=None, input={'path': '.'}, name='read_file', type='tool_use')
+#  read current file ===> OK
+# ToolUseBlock(id='call_00_8Z3Sgv4wG5SwotcnZiz8hgnW', caller=None, input={'path': '.'}, name='read_file', type='tool_use')
+# $ read_file tools is excuted
+# path :.
+# [{'role': 'user', 'content': 'read current file'}, {'role': 'assistant', 'content': [TextBlock(citations=None, text="I'll read the current file to see what's available.", type='text'), ToolUseBlock(id='call_00_8Z3Sgv4wG5SwotcnZiz8hgnW', caller=None, input={'path': '.'}, name='read_file', type='tool_use')]}]
+# The current file contains "hello world". Is there something specific you'd like me to do with this file or would you like me to read a different file?
+
+# read all file of this folder ===> Issue
+# ToolUseBlock(id='call_00_Ufj2rOCUOi51zYNoitgw1lCN', caller=None, input={'command': 'ls -la'}, name='bash', type='tool_use')
+# [{'role': 'user', 'content': 'read current file'}, {'role': 'assistant', 'content': [TextBlock(citations=None, text="I'll read the current file to see what's available.", type='text'), ToolUseBlock(id='call_00_8Z3Sgv4wG5SwotcnZiz8hgnW', caller=None, input={'path': '.'}, name='read_file', type='tool_use')]}, {'role': 'user', 'content': [{'type': 'tool_result', 'tool_use_id': 'call_00_8Z3Sgv4wG5SwotcnZiz8hgnW', 'content': 'hello world'}]}, {'role': 'assistant', 'content': [TextBlock(citations=None, text='The current file contains "hello world". Is there something specific you\'d like me to do with this file or would you like me to read a different file?', type='text')]}, {'role': 'user', 'content': 'read all file of this folder'}, {'role': 'assistant', 'content': [TextBlock(citations=None, text="I'll read all files in the current folder.", type='text'), ToolUseBlock(id='call_00_Ufj2rOCUOi51zYNoitgw1lCN', caller=None, input={'command': 'ls -la'}, name='bash', type='tool_use')]}]
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 136, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 92, in agent_loop
+#     messageFromLLM = client.messages.create(
+#         model=model,
+#     ...<3 lines>...
+#         tools=TOOLS,
+#     )
+#   File "C:\Users\lolom\repo\learn-claude-code\.venv\Lib\site-packages\anthropic\_utils\_utils.py", line 282, in wrapper
+#     return func(*args, **kwargs)
+#   File "C:\Users\lolom\repo\learn-claude-code\.venv\Lib\site-packages\anthropic\resources\messages\messages.py", line 996, in create
+#     return self._post(
+#            ~~~~~~~~~~^
+#         "/v1/messages",
+#         ^^^^^^^^^^^^^^^
+#     ...<30 lines>...
+#         stream_cls=Stream[RawMessageStreamEvent],
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#     )
+#     ^
+#   File "C:\Users\lolom\repo\learn-claude-code\.venv\Lib\site-packages\anthropic\_base_client.py", line 1364, in post
+#     return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+#                            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\.venv\Lib\site-packages\anthropic\_base_client.py", line 1137, in request
+#     raise self._make_status_error_from_response(err.response) from None
+# anthropic.BadRequestError: Error code: 400 - {'error': {'message': 'messages.6: all messages must have non-empty content', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
