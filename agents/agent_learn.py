@@ -60,7 +60,8 @@ TOOLS = [
 
 def read_file(path: str) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
-    text = (Path.cwd() / path).resolve().read_text()
+    # 使用 errors='replace' 自动处理编码问题，替换无法解码的字符
+    text = (Path.cwd() / path).resolve().read_text(encoding='utf-8', errors='replace')
     lines = text.splitlines()
     return "\n".join(lines)[:50000]
 
@@ -155,20 +156,3 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-
-#meet issue gbk
-# $ python agent_learn.py
-# s01 >> show me the content of agent_learn.py
-# $ read_file tools is excuted
-# Traceback (most recent call last):
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 152, in <module>
-#     agent_loop(history)
-#     ~~~~~~~~~~^^^^^^^^^
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 128, in agent_loop
-#     output = read_file(block.input["path"])
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 64, in read_file
-#     text = (Path.cwd() / path).resolve().read_text()
-#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\pathlib\__init__.py", line 788, in read_text
-#     return f.read()
-#            ~~~~~~^^
-# UnicodeDecodeError: 'gbk' codec can't decode byte 0xad in position 123: illegal multibyte sequence
