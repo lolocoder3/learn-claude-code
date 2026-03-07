@@ -22,6 +22,7 @@ TOOLS = [{
     },
 }]
 
+
 def run_bash(command: str) -> str:
     dangerous = ["rm -rf /", "sudo", "shutdown", "reboot", "> /dev/"]
     if any(d in command for d in dangerous):
@@ -46,8 +47,9 @@ def agent_loop(history):
         )
 
         # 添加整个assistant响应（包括tool_use块）
-        history.append({"role": "assistant", "content": messageFromLLM.content})
-        if(messageFromLLM.stop_reason != "tool_use"):
+        history.append(
+            {"role": "assistant", "content": messageFromLLM.content})
+        if (messageFromLLM.stop_reason != "tool_use"):
             return
         results = []
         for block in messageFromLLM.content:
@@ -56,8 +58,9 @@ def agent_loop(history):
                 output = run_bash(block.input["command"])
                 print(output[:200])
                 results.append({"type": "tool_result", "tool_use_id": block.id,
-                                    "content": output})
+                                "content": output})
         history.append({"role": "user", "content": results})
+
 
 if __name__ == "__main__":
     history = []
@@ -67,7 +70,7 @@ if __name__ == "__main__":
         except (EOFError, KeyboardInterrupt):
             break
 
-        if query.strip().lower() in ("q", "exit",""):
+        if query.strip().lower() in ("q", "exit", ""):
             break
 
         history.append({"role": "user", "content": query})
