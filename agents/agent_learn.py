@@ -7,12 +7,17 @@ from dotenv import load_dotenv
 
 # 读取env中的api-key
 load_dotenv(override=True)
-
+WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-SYSTEM = f"You are a coding agent at {os.getcwd()}. Use Tools to solve tasks. Act, don't explain."
+SYSTEM = f"You are a coding agent at {WORKDIR}. Use Tools to solve tasks. Act, don't explain."
 
+def safe_path(p: str) -> Path:
+    path = (WORKDIR / p).resolve()
+    if not path.is_relative_to(WORKDIR):
+        raise ValueError(f"Path escapes workspace: {p}")
+    return path
 
 TOOLS = [
     {
@@ -61,7 +66,7 @@ TOOLS = [
 def read_file(path: str,limit: int = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
     # 使用 errors='replace' 自动处理编码问题，替换无法解码的字符
-    text = (Path.cwd() / path).resolve().read_text(encoding='utf-8', errors='replace')
+    text = safe_path(path).resolve().read_text(encoding='utf-8', errors='replace')
     lines = text.splitlines()
     if limit and limit < len(lines):
             lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
@@ -85,7 +90,7 @@ def run_bash(command: str) -> str:
         r = subprocess.run(
             command,
             shell=True,
-            cwd=os.getcwd(),
+            cwd=WORKDIR,
             capture_output=True,
             text=True,
             encoding="utf-8",
