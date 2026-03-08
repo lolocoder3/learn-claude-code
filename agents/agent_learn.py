@@ -148,38 +148,20 @@ def agent_loop(history):
                     print(f"\033[33m$ {block.input['command']}\033[0m")
                     output = run_bash(block.input["command"])
                     print(output[:200])
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": output,
-                        }
-                    )
                 elif block.name == "read_file":
                     output = read_file(block.input["path"], block.input.get("limit"))
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": output,
-                        }
-                    )
                 elif block.name == "write_file":
                     output = write_file(block.input["path"], block.input["content"])
-                    results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": output,
-                        }
-                    )
                 elif block.name == "edit_file":
                     output = edit_file(
                         block.input["path"],
                         block.input["old_text"],
                         block.input["new_text"],
                     )
-                    results.append(
+                    
+                else:
+                    output = f"Unknown tool: {block.name}"
+                results.append(
                         {
                             "type": "tool_result",
                             "tool_use_id": block.id,
