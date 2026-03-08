@@ -158,12 +158,12 @@ def agent_loop(history):
                 else:
                     output = f"Unknown tool: {block.name}"
                 results.append(
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": block.id,
-                            "content": output,
-                        }
-                    )
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": output,
+                    }
+                )
         history.append({"role": "user", "content": results})
 
 
