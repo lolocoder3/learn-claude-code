@@ -150,8 +150,7 @@ def agent_loop(history):
                         }
                     )
                 elif block.name == "read_file":
-                    print(block)
-                    output = read_file(block.input["path"],block.input["limit"])
+                    output = read_file(block.input["path"],block.input.get("limit"))
                     results.append(
                         {
                             "type": "tool_result",
@@ -160,7 +159,6 @@ def agent_loop(history):
                         }
                     )
                 elif block.name == "write_file":
-                    print(block)
                     output = write_file(block.input["path"],block.input["content"])
                     results.append(
                         {
@@ -169,7 +167,6 @@ def agent_loop(history):
                             "content": output,
                         }
                     )
-        # print(history)
         history.append({"role": "user", "content": results})
 
 
@@ -192,15 +189,3 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-
-# $ python agent_learn.py 
-# s01 >> show content of agent_learn.py
-# ToolUseBlock(id='call_00_55AzvbDqfWUWYuuho4WwFfY1', caller=None, input={'path': 'agent_learn.py'}, name='read_file', type='tool_use')
-# Traceback (most recent call last):
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 188, in <module>
-#     agent_loop(history)
-#     ~~~~~~~~~~^^^^^^^^^
-#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 154, in agent_loop
-#     output = read_file(block.input["path"],block.input["limit"])
-#                                            ~~~~~~~~~~~^^^^^^^^^
-# KeyError: 'limit'
