@@ -159,6 +159,16 @@ def agent_loop(history):
                             "content": output,
                         }
                     )
+                elif block.name == "write_file":
+                    print(block)
+                    output = write_file(block.input["path"],block.input["content"])
+                    results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": output,
+                        }
+                    )
         # print(history)
         history.append({"role": "user", "content": results})
 
