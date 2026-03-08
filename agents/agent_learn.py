@@ -13,11 +13,13 @@ model = "deepseek-chat"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use Tools to solve tasks. Act, don't explain."
 
+
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
     if not path.is_relative_to(WORKDIR):
         raise ValueError(f"Path escapes workspace: {p}")
     return path
+
 
 TOOLS = [
     {
@@ -34,7 +36,10 @@ TOOLS = [
         "description": "Read file contents.",
         "input_schema": {
             "type": "object",
-            "properties": {"path": {"type": "string"}, "limit": {"type": ["integer", "null"]}},
+            "properties": {
+                "path": {"type": "string"},
+                "limit": {"type": ["integer", "null"]},
+            },
             "required": ["path"],
         },
     },
@@ -63,17 +68,17 @@ TOOLS = [
 ]
 
 
-def read_file(path: str,limit: int = None) -> str:
+def read_file(path: str, limit: int = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
     try:
         # 使用 errors='replace' 自动处理编码问题，替换无法解码的字符
-        text = safe_path(path).read_text(encoding='utf-8', errors='replace')
+        text = safe_path(path).read_text(encoding="utf-8", errors="replace")
         lines = text.splitlines()
         if limit and limit < len(lines):
-                lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
+            lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
         return "\n".join(lines)[:50000]
     except Exception as e:
-            return f"Error: {e}"
+        return f"Error: {e}"
 
 
 def write_file(path: str, content: str) -> str:
@@ -98,6 +103,7 @@ def edit_file(path: str, old_text: str, new_text: str) -> str:
         return f"Edited {path}"
     except Exception as e:
         return f"Error: {e}"
+
 
 def run_bash(command: str) -> str:
     print(f"\033[33m$ run_bash tools is excuted\033[0m")
@@ -150,7 +156,7 @@ def agent_loop(history):
                         }
                     )
                 elif block.name == "read_file":
-                    output = read_file(block.input["path"],block.input.get("limit"))
+                    output = read_file(block.input["path"], block.input.get("limit"))
                     results.append(
                         {
                             "type": "tool_result",
@@ -159,7 +165,7 @@ def agent_loop(history):
                         }
                     )
                 elif block.name == "write_file":
-                    output = write_file(block.input["path"],block.input["content"])
+                    output = write_file(block.input["path"], block.input["content"])
                     results.append(
                         {
                             "type": "tool_result",
