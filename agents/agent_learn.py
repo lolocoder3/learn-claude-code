@@ -193,9 +193,14 @@ if __name__ == "__main__":
                     print(block.text)
         print()
 
-# you can see all content of agent_learn.py is shown, limit should be triggered, 
-
-#  read the beginning 200 of agent_learn.py   
-# ToolUseBlock(id='call_00_V6VAbuI4CFIc6CqBQSmf0pCT', caller=None, input={'path': 'agent_learn.py', 'limit': 200}, name='read_file', type='tool_use')
-# $ read_file tools is excuted
-# Here are the first 200 characters of the file "agent_learn.py":
+# $ python agent_learn.py 
+# s01 >> show content of agent_learn.py
+# ToolUseBlock(id='call_00_55AzvbDqfWUWYuuho4WwFfY1', caller=None, input={'path': 'agent_learn.py'}, name='read_file', type='tool_use')
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 188, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 154, in agent_loop
+#     output = read_file(block.input["path"],block.input["limit"])
+#                                            ~~~~~~~~~~~^^^^^^^^^
+# KeyError: 'limit'
