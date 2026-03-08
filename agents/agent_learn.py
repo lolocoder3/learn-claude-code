@@ -76,8 +76,15 @@ def read_file(path: str,limit: int = None) -> str:
             return f"Error: {e}"
 
 
-def write_file(command: str) -> None:
+def write_file(path: str, content: str) -> str:
     print(f"\033[33m$ write_file tools is excuted\033[0m")
+    try:
+        fp = safe_path(path)
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        fp.write_text(content)
+        return f"Wrote {len(content)} bytes to {path}"
+    except Exception as e:
+        return f"Error: {e}"
 
 
 def edit_file(command: str) -> None:
