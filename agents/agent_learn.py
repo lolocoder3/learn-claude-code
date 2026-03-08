@@ -87,9 +87,17 @@ def write_file(path: str, content: str) -> str:
         return f"Error: {e}"
 
 
-def edit_file(command: str) -> None:
+def edit_file(path: str, old_text: str, new_text: str) -> str:
     print(f"\033[33m$ edit_file tools is excuted\033[0m")
-
+    try:
+        fp = safe_path(path)
+        content = fp.read_text()
+        if old_text not in content:
+            return f"Error: Text not found in {path}"
+        fp.write_text(content.replace(old_text, new_text, 1))
+        return f"Edited {path}"
+    except Exception as e:
+        return f"Error: {e}"
 
 def run_bash(command: str) -> str:
     print(f"\033[33m$ run_bash tools is excuted\033[0m")
