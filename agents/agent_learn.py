@@ -34,7 +34,7 @@ TOOLS = [
         "description": "Read file contents.",
         "input_schema": {
             "type": "object",
-            "properties": {"path": {"type": "string"}, "limit": {"type": "integer"}},
+            "properties": {"path": {"type": "string"}, "limit": {"type": ["integer", "null"]}},
             "required": ["path"],
         },
     },
@@ -150,6 +150,7 @@ def agent_loop(history):
                         }
                     )
                 elif block.name == "read_file":
+                    print(block)
                     output = read_file(block.input["path"])
                     results.append(
                         {
@@ -181,3 +182,10 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+
+# you can see all content of agent_learn.py is shown, limit should be triggered, 
+
+#  read the beginning 200 of agent_learn.py   
+# ToolUseBlock(id='call_00_V6VAbuI4CFIc6CqBQSmf0pCT', caller=None, input={'path': 'agent_learn.py', 'limit': 200}, name='read_file', type='tool_use')
+# $ read_file tools is excuted
+# Here are the first 200 characters of the file "agent_learn.py":
