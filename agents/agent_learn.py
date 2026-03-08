@@ -173,6 +173,19 @@ def agent_loop(history):
                             "content": output,
                         }
                     )
+                elif block.name == "edit_file":
+                    output = edit_file(
+                        block.input["path"],
+                        block.input["old_text"],
+                        block.input["new_text"],
+                    )
+                    results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": block.id,
+                            "content": output,
+                        }
+                    )
         history.append({"role": "user", "content": results})
 
 
