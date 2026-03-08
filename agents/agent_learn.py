@@ -21,6 +21,14 @@ def safe_path(p: str) -> Path:
     return path
 
 
+# -- The dispatch map: {tool_name: handler} --
+TOOL_HANDLERS = {
+    "run_bash": lambda **kw: run_bash(block.input["command"]),
+    "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
+    "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
+    "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
+}
+
 TOOLS = [
     {
         "name": "run_bash",
@@ -144,21 +152,9 @@ def agent_loop(history):
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
-                if block.name == "run_bash":
-                    print(f"\033[33m$ {block.input['command']}\033[0m")
-                    output = run_bash(block.input["command"])
-                    print(output[:200])
-                elif block.name == "read_file":
-                    output = read_file(block.input["path"], block.input.get("limit"))
-                elif block.name == "write_file":
-                    output = write_file(block.input["path"], block.input["content"])
-                elif block.name == "edit_file":
-                    output = edit_file(
-                        block.input["path"],
-                        block.input["old_text"],
-                        block.input["new_text"],
-                    )
-                    
+                handler = TOOL_HANDLERS.get(block.name)
+                if handler is not None:
+                    output = handler(**block.input)
                 else:
                     output = f"Unknown tool: {block.name}"
                 results.append(
