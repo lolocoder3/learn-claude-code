@@ -151,7 +151,7 @@ def agent_loop(history):
                     )
                 elif block.name == "read_file":
                     print(block)
-                    output = read_file(block.input["path"])
+                    output = read_file(block.input["path"],block.input["limit"])
                     results.append(
                         {
                             "type": "tool_result",
