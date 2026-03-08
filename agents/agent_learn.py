@@ -67,7 +67,7 @@ def read_file(path: str,limit: int = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
     try:
         # 使用 errors='replace' 自动处理编码问题，替换无法解码的字符
-        text = safe_path(path).resolve().read_text(encoding='utf-8', errors='replace')
+        text = safe_path(path).read_text(encoding='utf-8', errors='replace')
         lines = text.splitlines()
         if limit and limit < len(lines):
                 lines = lines[:limit] + [f"... ({len(lines) - limit} more lines)"]
