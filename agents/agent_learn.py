@@ -162,8 +162,8 @@ def run_subagent(prompt: str) -> str:
             model=model,
             max_tokens=8000,
             system="You are a helpful assistant.",
-            messages=history,
-            tools=PARENT_TOOLS,
+            messages=prompt,
+            tools=CHILD_TOOLS,
         )
 
         history.append({"role": "assistant", "content": messageFromLLM.content})
@@ -189,6 +189,7 @@ def run_subagent(prompt: str) -> str:
                     }
                 )
         history.append({"role": "user", "content": results})
+    return "summary from subagent"
 
 
 def agent_loop(history):
