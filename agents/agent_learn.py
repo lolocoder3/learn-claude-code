@@ -23,7 +23,7 @@ def safe_path(p: str) -> Path:
 
 # -- The dispatch map: {tool_name: handler} --
 TOOL_HANDLERS = {
-    "run_bash": lambda **kw: run_bash(block.input["command"]),
+    "run_bash": lambda **kw: run_bash(kw["command"]),
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
@@ -186,3 +186,6 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+# 修复了 `agents/agent_learn.py` 文件中的 `NameError: name 'block' is not defined` 错误。
+
+# __问题分析：__ 在 `TOOL_HANDLERS` 字典中，`run_bash` 工具的处理函数错误地使用了 `block.input["command"]`，而 `block` 变量在这个lambda函数的作用域中未定义。正确的做法应该是从 `kw` 参数中获取 `command` 参数。
