@@ -157,7 +157,7 @@ def run_bash(command: str) -> str:
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
-    while True:
+    for _ in range(30):  # safety limit
         messageFromLLM = client.messages.create(
             model=model,
             max_tokens=8000,
