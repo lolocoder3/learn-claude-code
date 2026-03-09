@@ -161,7 +161,7 @@ def run_subagent(prompt: str) -> str:
         messageFromLLM = client.messages.create(
             model=model,
             max_tokens=8000,
-            system="You are a helpful assistant.",
+            system=SUBAGENT_SYSTEM,
             messages=prompt,
             tools=CHILD_TOOLS,
         )
@@ -197,7 +197,7 @@ def agent_loop(history):
         messageFromLLM = client.messages.create(
             model=model,
             max_tokens=8000,
-            system="You are a helpful assistant.",
+            system=SYSTEM,
             messages=history,
             tools=PARENT_TOOLS,
         )
