@@ -157,6 +157,8 @@ def run_bash(command: str) -> str:
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
+    #From main agent loop, we know history is a list that 
+    # contain {"role": "assistant", "content": messageFromLLM.content} and {"role": "user", "content": results}
     for _ in range(30):  # safety limit
         messageFromLLM = client.messages.create(
             model=model,
