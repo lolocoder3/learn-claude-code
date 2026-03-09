@@ -5,7 +5,6 @@ from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
 
-# 读取env中的api-key
 load_dotenv(override=True)
 WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
@@ -103,6 +102,7 @@ TOOLS = [
     },
 ]
 
+
 class TodoManager:
     def __init__(self):
         self.items = []
@@ -112,9 +112,6 @@ class TodoManager:
         print(self.items)
         return self.render()
 
-    # 将待办事项列表渲染为可读的字符串格式。
-    # - 让AI代理能够可视化自己的任务进度
-    # - 提供清晰的进度反馈给用户
     def render(self) -> str:
         if not self.items:
             return "No todos."
@@ -130,11 +127,12 @@ class TodoManager:
 
             lines.append(f"{marker} #{item['id']}: {item['text']}")
         todoStatus = "\n".join(lines)
-        print("todoStatus ===>",todoStatus)
+        print("todoStatus ===>", todoStatus)
         return todoStatus
 
 
 TODO = TodoManager()
+
 
 def read_file(path: str, limit: int = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
@@ -205,7 +203,6 @@ def agent_loop(history):
             tools=TOOLS,
         )
 
-        # 添加整个assistant响应（包括tool_use块）
         history.append({"role": "assistant", "content": messageFromLLM.content})
         if messageFromLLM.stop_reason != "tool_use":
             return
