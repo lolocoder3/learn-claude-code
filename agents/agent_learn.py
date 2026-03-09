@@ -154,8 +154,10 @@ def run_bash(command: str) -> str:
     except subprocess.TimeoutExpired:
         return "Error: Timeout (120s)"
 
+
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
+    print(prompt)
     return "this is subagent"
 
 
@@ -177,11 +179,13 @@ def agent_loop(history):
             if block.type == "tool_use":
                 if block.name == "task":
                     print(block)
-                handler = TOOL_HANDLERS.get(block.name)
-                if handler is not None:
-                    output = handler(**block.input)
+                    output = run_subagent(block.input["prompt"])
                 else:
-                    output = f"Unknown tool: {block.name}"
+                    handler = TOOL_HANDLERS.get(block.name)
+                    if handler is not None:
+                        output = handler(**block.input)
+                    else:
+                        output = f"Unknown tool: {block.name}"
                 results.append(
                     {
                         "type": "tool_result",
@@ -190,22 +194,7 @@ def agent_loop(history):
                     }
                 )
         history.append({"role": "user", "content": results})
-#  Use a subtask to find what testing framework this project uses
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ read_file tools is excuted
-# $ read_file tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# $ run_bash tools is excuted
-# ToolUseBlock(id='call_00_tsk4Wqp7Tbi0wAd1nOeEIMem', caller=None, input={'prompt': 'Please explore this Python project thoroughly to determine what testing framework it uses. Look for:\n1. Any test files or directories\n2. Import statements related to testing frameworks (pytest, unittest, nose, etc.)\n3. Configuration files that might indicate testing setup (pytest.ini, setup.cfg, tox.ini, pyproject.toml, etc.)\n4. Any references to testing in documentation or comments\n5. Check the mypackage directory if it exists\n6. Look for any .github/workflows or CI/CD configuration that might indicate testing\n\nPlease provide a comprehensive analysis of what testing framework this project uses, or if none is found, state that clearly.', 'description': 'Explore project to find testing framework'}, name='task', type='tool_use')
+
 
 if __name__ == "__main__":
     history = []
