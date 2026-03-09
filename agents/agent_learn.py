@@ -11,7 +11,9 @@ WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. Use Tools to solve tasks. Act, don't explain."
+SYSTEM = f"""You are a coding agent at {WORKDIR}.
+Use the todo tool to plan multi-step tasks. Mark in_progress before starting, completed when done.
+Prefer tools over prose."""
 
 
 def safe_path(p: str) -> Path:
@@ -27,6 +29,7 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
+    "todo": lambda **kw: TODO.update(kw["items"]),
 }
 
 TOOLS = [
@@ -73,8 +76,58 @@ TOOLS = [
             "required": ["path", "old_text", "new_text"],
         },
     },
+    {
+        "name": "todo",
+        "description": "Update task list. Track progress on multi-step tasks.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "item": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string"},
+                            "text": {"type": "string"},
+                            "status": {
+                                "type": "string",
+                                "enum": ["pending", "in_progress", "completed"],
+                            },
+                        },
+                        "required": ["id", "text", "status"],
+                    },
+                }
+            },
+            "required": ["items"],
+        },
+    },
 ]
 
+# example 创建一个hello.py,然后增加一个2 sum函数
+# 空白表示 pending，x表示 completed，>表示in_progress
+
+# > todo: [x] #1: 创建hello.py文件
+# [x] #2: 添加基本的hello world功能
+# [x] #3: 实现2 sum函数
+# [>] #4: 测试代码功能
+
+# (3/4 completed)
+
+
+# 创建一个hello.py,然后增加一个2 sum函数
+# 观察todo 的items的数据
+
+# [{'id': '1', 'text': '创建hello.py文件', 'status': 'in_progress'}, {'id': '2', 'text': '添加2 sum函数', 'status': 'pending'}]
+
+class TodoManager:
+    def __init__(self):
+        self.items = []
+
+    def update(self, items: list) -> str:
+        print(items)
+        return ""
+
+TODO = TodoManager()
 
 def read_file(path: str, limit: int = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
@@ -186,6 +239,3 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-# 修复了 `agents/agent_learn.py` 文件中的 `NameError: name 'block' is not defined` 错误。
-
-# __问题分析：__ 在 `TOOL_HANDLERS` 字典中，`run_bash` 工具的处理函数错误地使用了 `block.input["command"]`，而 `block` 变量在这个lambda函数的作用域中未定义。正确的做法应该是从 `kw` 参数中获取 `command` 参数。
