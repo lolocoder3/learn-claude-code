@@ -108,8 +108,24 @@ class TodoManager:
         self.items = []
 
     def update(self, items: list) -> str:
-        self.items = items
-        print(self.items)
+        if len(items) > 20:
+            raise ValueError("Max 20 todos allowed") #任务数量超限错误
+        validated = []
+        in_progress_count = 0
+        for i, item in enumerate(items):
+            text = str(item.get("text", "")).strip()
+            status = str(item.get("status", "pending")).lower()
+            item_id = str(item.get("id", str(i + 1)))
+            if not text:
+                raise ValueError(f"Item {item_id}: text required") #任务文本为空错误
+            if status not in ("pending", "in_progress", "completed"):
+                raise ValueError(f"Item {item_id}: invalid status '{status}'") #任务状态无效错误
+            if status == "in_progress":
+                in_progress_count += 1
+            validated.append({"id": item_id, "text": text, "status": status})
+        if in_progress_count > 1:
+            raise ValueError("Only one task can be in_progress at a time") #多个进行中任务错误
+        self.items = validated
         return self.render()
 
     def render(self) -> str:
