@@ -103,29 +103,36 @@ TOOLS = [
     },
 ]
 
-# example 创建一个hello.py,然后增加一个2 sum函数
-# 空白表示 pending，x表示 completed，>表示in_progress
-
-# > todo: [x] #1: 创建hello.py文件
-# [x] #2: 添加基本的hello world功能
-# [x] #3: 实现2 sum函数
-# [>] #4: 测试代码功能
-
-# (3/4 completed)
-
-
-# 创建一个hello.py,然后增加一个2 sum函数
-# 观察todo 的items的数据
-
-# [{'id': '1', 'text': '创建hello.py文件', 'status': 'in_progress'}, {'id': '2', 'text': '添加2 sum函数', 'status': 'pending'}]
-
 class TodoManager:
     def __init__(self):
         self.items = []
 
     def update(self, items: list) -> str:
-        print(items)
-        return ""
+        self.items = items
+        print(self.items)
+        return self.render()
+
+    # 将待办事项列表渲染为可读的字符串格式。
+    # - 让AI代理能够可视化自己的任务进度
+    # - 提供清晰的进度反馈给用户
+    def render(self) -> str:
+        if not self.items:
+            return "No todos."
+        lines = []
+        for item in self.items:
+            marker = ""
+            if item["status"] == "pending":
+                marker = "[ ]"
+            elif item["status"] == "in_progress":
+                marker = "[>]"
+            elif item["status"] == "completed":
+                marker = "[x]"
+
+            lines.append(f"{marker} #{item['id']}: {item['text']}")
+        todoStatus = "\n".join(lines)
+        print("todoStatus ===>",todoStatus)
+        return todoStatus
+
 
 TODO = TodoManager()
 
