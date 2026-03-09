@@ -116,14 +116,9 @@ class TodoManager:
         if not self.items:
             return "No todos."
         lines = []
+        marker_map = {"pending": "[ ]", "in_progress": "[>]", "completed": "[x]"}
         for item in self.items:
-            marker = ""
-            if item["status"] == "pending":
-                marker = "[ ]"
-            elif item["status"] == "in_progress":
-                marker = "[>]"
-            elif item["status"] == "completed":
-                marker = "[x]"
+            marker = marker_map[item["status"]]
 
             lines.append(f"{marker} #{item['id']}: {item['text']}")
         done = sum(1 for t in self.items if t["status"] == "completed")
