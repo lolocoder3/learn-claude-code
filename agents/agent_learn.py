@@ -10,9 +10,8 @@ WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-SYSTEM = f"""You are a coding agent at {WORKDIR}.
-Use the todo tool to plan multi-step tasks. Mark in_progress before starting, completed when done.
-Prefer tools over prose."""
+SYSTEM = f"You are a coding agent at {WORKDIR}. Use the task tool to delegate exploration or subtasks."
+SUBAGENT_SYSTEM = f"You are a coding subagent at {WORKDIR}. Complete the given task, then summarize your findings."
 
 
 def safe_path(p: str) -> Path:
@@ -28,10 +27,10 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
-    "todo": lambda **kw: TODO.update(kw["items"]),
 }
 
-TOOLS = [
+# Child gets all base tools except task (no recursive spawning)
+CHILD_TOOLS = [
     {
         "name": "run_bash",
         "description": "Run a shell command.",
@@ -75,76 +74,26 @@ TOOLS = [
             "required": ["path", "old_text", "new_text"],
         },
     },
+]
+
+# -- Parent tools: base tools + task dispatcher --
+PARENT_TOOLS = CHILD_TOOLS + [
     {
-        "name": "todo",
-        "description": "Update task list. Track progress on multi-step tasks.",
+        "name": "task",
+        "description": "Spawn a subagent with fresh context. It shares the filesystem but not conversation history.",
         "input_schema": {
             "type": "object",
             "properties": {
-                "items": {
-                    "type": "array",
-                    "item": {
-                        "type": "object",
-                        "properties": {
-                            "id": {"type": "string"},
-                            "text": {"type": "string"},
-                            "status": {
-                                "type": "string",
-                                "enum": ["pending", "in_progress", "completed"],
-                            },
-                        },
-                        "required": ["id", "text", "status"],
-                    },
-                }
+                "prompt": {"type": "string"},
+                "description": {
+                    "type": "string",
+                    "description": "Short description of the task",
+                },
             },
-            "required": ["items"],
+            "required": ["prompt"],
         },
     },
 ]
-
-
-class TodoManager:
-    def __init__(self):
-        self.items = []
-
-    def update(self, items: list) -> str:
-        if len(items) > 20:
-            raise ValueError("Max 20 todos allowed") #任务数量超限错误
-        validated = []
-        in_progress_count = 0
-        for i, item in enumerate(items):
-            text = str(item.get("text", "")).strip()
-            status = str(item.get("status", "pending")).lower()
-            item_id = str(item.get("id", str(i + 1)))
-            if not text:
-                raise ValueError(f"Item {item_id}: text required") #任务文本为空错误
-            if status not in ("pending", "in_progress", "completed"):
-                raise ValueError(f"Item {item_id}: invalid status '{status}'") #任务状态无效错误
-            if status == "in_progress":
-                in_progress_count += 1
-            validated.append({"id": item_id, "text": text, "status": status})
-        if in_progress_count > 1:
-            raise ValueError("Only one task can be in_progress at a time") #多个进行中任务错误
-        self.items = validated
-        return self.render()
-
-    def render(self) -> str:
-        if not self.items:
-            return "No todos."
-        lines = []
-        marker_map = {"pending": "[ ]", "in_progress": "[>]", "completed": "[x]"}
-        for item in self.items:
-            marker = marker_map[item["status"]]
-
-            lines.append(f"{marker} #{item['id']}: {item['text']}")
-        done = sum(1 for t in self.items if t["status"] == "completed")
-        lines.append(f"\n({done}/{len(self.items)} completed)")
-        todoStatus = "\n".join(lines)
-        print("todoStatus ===>", todoStatus)
-        return todoStatus
-
-
-TODO = TodoManager()
 
 
 def read_file(path: str, limit: int = None) -> str:
@@ -205,6 +154,10 @@ def run_bash(command: str) -> str:
     except subprocess.TimeoutExpired:
         return "Error: Timeout (120s)"
 
+# -- Subagent: fresh context, filtered tools, summary-only return --
+def run_subagent(prompt: str) -> str:
+    return "this is subagent"
+
 
 def agent_loop(history):
     while True:
@@ -213,7 +166,7 @@ def agent_loop(history):
             max_tokens=8000,
             system="You are a helpful assistant.",
             messages=history,
-            tools=TOOLS,
+            tools=PARENT_TOOLS,
         )
 
         history.append({"role": "assistant", "content": messageFromLLM.content})
@@ -222,6 +175,8 @@ def agent_loop(history):
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
+                if block.name == "task":
+                    print(block)
                 handler = TOOL_HANDLERS.get(block.name)
                 if handler is not None:
                     output = handler(**block.input)
@@ -235,7 +190,22 @@ def agent_loop(history):
                     }
                 )
         history.append({"role": "user", "content": results})
-
+#  Use a subtask to find what testing framework this project uses
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ read_file tools is excuted
+# $ read_file tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# $ run_bash tools is excuted
+# ToolUseBlock(id='call_00_tsk4Wqp7Tbi0wAd1nOeEIMem', caller=None, input={'prompt': 'Please explore this Python project thoroughly to determine what testing framework it uses. Look for:\n1. Any test files or directories\n2. Import statements related to testing frameworks (pytest, unittest, nose, etc.)\n3. Configuration files that might indicate testing setup (pytest.ini, setup.cfg, tox.ini, pyproject.toml, etc.)\n4. Any references to testing in documentation or comments\n5. Check the mypackage directory if it exists\n6. Look for any .github/workflows or CI/CD configuration that might indicate testing\n\nPlease provide a comprehensive analysis of what testing framework this project uses, or if none is found, state that clearly.', 'description': 'Explore project to find testing framework'}, name='task', type='tool_use')
 
 if __name__ == "__main__":
     history = []
