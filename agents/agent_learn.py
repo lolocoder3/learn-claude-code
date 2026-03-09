@@ -157,8 +157,38 @@ def run_bash(command: str) -> str:
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
-    print(prompt)
-    return "this is subagent"
+    while True:
+        messageFromLLM = client.messages.create(
+            model=model,
+            max_tokens=8000,
+            system="You are a helpful assistant.",
+            messages=history,
+            tools=PARENT_TOOLS,
+        )
+
+        history.append({"role": "assistant", "content": messageFromLLM.content})
+        if messageFromLLM.stop_reason != "tool_use":
+            return
+        results = []
+        for block in messageFromLLM.content:
+            if block.type == "tool_use":
+                if block.name == "task":
+                    print(block)
+                    output = run_subagent(block.input["prompt"])
+                else:
+                    handler = TOOL_HANDLERS.get(block.name)
+                    if handler is not None:
+                        output = handler(**block.input)
+                    else:
+                        output = f"Unknown tool: {block.name}"
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": output,
+                    }
+                )
+        history.append({"role": "user", "content": results})
 
 
 def agent_loop(history):
