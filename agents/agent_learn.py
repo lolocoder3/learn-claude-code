@@ -174,15 +174,11 @@ def run_subagent(prompt: str) -> str:
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
-                if block.name == "task":
-                    print(block)
-                    output = run_subagent(block.input["prompt"])
+                handler = TOOL_HANDLERS.get(block.name)
+                if handler is not None:
+                    output = handler(**block.input)
                 else:
-                    handler = TOOL_HANDLERS.get(block.name)
-                    if handler is not None:
-                        output = handler(**block.input)
-                    else:
-                        output = f"Unknown tool: {block.name}"
+                    output = f"Unknown tool: {block.name}"
                 results.append(
                     {
                         "type": "tool_result",
