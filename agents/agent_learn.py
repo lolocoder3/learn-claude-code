@@ -157,8 +157,8 @@ def run_bash(command: str) -> str:
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
-    #From main agent loop, we know history is a list that 
-    # contain {"role": "assistant", "content": messageFromLLM.content} and {"role": "user", "content": results}
+    # see line 243, and know history in sub agent should start from user
+    sub_messages = [{"role": "user", "content": prompt}]
     for _ in range(30):  # safety limit
         messageFromLLM = client.messages.create(
             model=model,
@@ -168,7 +168,7 @@ def run_subagent(prompt: str) -> str:
             tools=CHILD_TOOLS,
         )
 
-        history.append({"role": "assistant", "content": messageFromLLM.content})
+        sub_messages.append({"role": "assistant", "content": messageFromLLM.content})
         if messageFromLLM.stop_reason != "tool_use":
             return
         results = []
@@ -190,7 +190,7 @@ def run_subagent(prompt: str) -> str:
                         "content": output,
                     }
                 )
-        history.append({"role": "user", "content": results})
+        sub_messages.append({"role": "user", "content": results})
     return "summary from subagent"
 
 
