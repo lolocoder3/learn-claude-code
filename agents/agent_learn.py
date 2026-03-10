@@ -157,10 +157,10 @@ def run_bash(command: str) -> str:
 
 # -- Subagent: fresh context, filtered tools, summary-only return --
 def run_subagent(prompt: str) -> str:
-    # see line 243, and know history in sub agent should start from user
+    print(f"\033[33m$ run_subagent tools is excuted\033[0m")
     sub_messages = [{"role": "user", "content": prompt}]
     for _ in range(30):  # safety limit
-        messageFromLLM = client.messages.create(
+        message = client.messages.create(
             model=model,
             max_tokens=8000,
             system=SUBAGENT_SYSTEM,
@@ -168,11 +168,11 @@ def run_subagent(prompt: str) -> str:
             tools=CHILD_TOOLS,
         )
 
-        sub_messages.append({"role": "assistant", "content": messageFromLLM.content})
-        if messageFromLLM.stop_reason != "tool_use":
+        sub_messages.append({"role": "assistant", "content": message.content})
+        if message.stop_reason != "tool_use":
             break
         results = []
-        for block in messageFromLLM.content:
+        for block in message.content:
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
                 if handler is not None:
@@ -190,7 +190,7 @@ def run_subagent(prompt: str) -> str:
     # Only the final text returns to the parent -- child context is discarded
     tmp = []
     summary = "(no summary)"
-    for b in messageFromLLM.content:
+    for b in message.content:
         if hasattr(b, "text") and b.text != "":
             tmp.append(b.text)
     if len(tmp) > 0:
@@ -200,7 +200,6 @@ def run_subagent(prompt: str) -> str:
 
 
 def agent_loop(history):
-    print(history)
     while True:
         messageFromLLM = client.messages.create(
             model=model,
