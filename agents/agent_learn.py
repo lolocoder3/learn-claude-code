@@ -187,7 +187,16 @@ def run_subagent(prompt: str) -> str:
                     }
                 )
         sub_messages.append({"role": "user", "content": results})
-    return "summary from subagent"
+    # Only the final text returns to the parent -- child context is discarded
+    tmp = []
+    summary = "(no summary)"
+    for b in messageFromLLM.content:
+        if hasattr(b, "text") and b.text != "":
+            tmp.append(b.text)
+    if len(tmp) > 0:
+        summary = "".join(tmp)
+
+    return summary
 
 
 def agent_loop(history):
