@@ -170,7 +170,7 @@ def run_subagent(prompt: str) -> str:
 
         sub_messages.append({"role": "assistant", "content": messageFromLLM.content})
         if messageFromLLM.stop_reason != "tool_use":
-            return
+            break
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
