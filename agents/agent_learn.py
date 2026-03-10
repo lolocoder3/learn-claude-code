@@ -164,7 +164,7 @@ def run_subagent(prompt: str) -> str:
             model=model,
             max_tokens=8000,
             system=SUBAGENT_SYSTEM,
-            messages=prompt,
+            messages=sub_messages,
             tools=CHILD_TOOLS,
         )
 
@@ -195,11 +195,12 @@ def run_subagent(prompt: str) -> str:
             tmp.append(b.text)
     if len(tmp) > 0:
         summary = "".join(tmp)
-
+    print(summary)
     return summary
 
 
 def agent_loop(history):
+    print(history)
     while True:
         messageFromLLM = client.messages.create(
             model=model,
@@ -253,3 +254,79 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+
+# python agent_learn.py 
+
+# error
+# Failed to deserialize the JSON body into the target type: messages: invalid type: string 
+
+
+# s01 >> Use a subtask to find what testing framework this project uses
+# [{'role': 'user', 'content': 'Use a subtask to find what testing framework this project uses'}]
+# ToolUseBlock(id='call_00_sfiNEluvGbTI89YHtmDuaGFQ', caller=None, input={'description': 'Explore project structure to identify testing framework', 'prompt': "Please explore this project's structure to identify what testing framework it uses. Look for:\n1. Package.json or similar dependency files\n2. Test files (e.g., *.spec.js, *.test.js, *.test.ts, etc.)\n3. Configuration files for testing (jest.config.js, vitest.config.js, etc.)\n4. Any test scripts in package.json\n5. Common testing framework files and directories\n\nStart by examining the current directory structure and then look for specific testing-related files."}, name='task', type='tool_use')
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 250, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 221, in agent_loop
+#     output = run_subagent(block.input["prompt"])
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 163, in run_subagent
+#     messageFromLLM = client.messages.create(
+#         model=model,
+#     ...<3 lines>...
+#         tools=CHILD_TOOLS,
+#     )
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_utils\_utils.py", line 282, in wrapper
+#     return func(*args, **kwargs)
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\resources\messages\messages.py", line 996, in create
+#     return self._post(
+#            ~~~~~~~~~~^
+#         "/v1/messages",
+#         ^^^^^^^^^^^^^^^
+#     ...<30 lines>...
+#         stream_cls=Stream[RawMessageStreamEvent],
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#     )
+#     ^
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_base_client.py", line 1364, in post
+#     return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+#                            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_base_client.py", line 1137, in request
+#     raise self._make_status_error_from_response(err.response) from None
+# anthropic.BadRequestError: Error code: 400 - {'error': {'message': 'Failed to deserialize the JSON body into the target type: messages: invalid type: string "Please explore this project\'s structure to identify what testing framework it uses. Look for:\\n1. Package.json or similar dependency files\\n2. Test files (e.g., *.spec.js, *.test.js, *.test.ts, etc.)\\n3. Configuration files for testing (jest.config.js, vitest.config.js, etc.)\\n4. Any test scripts in package.json\\n5. Common testing framework files and directories\\n\\nStart by examining the current directory structure and then look for specific testing-related files.", expected a sequence at line 1 column 500', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
+
+# lolom@WIN-96NTVQFEJNB MINGW64 ~/repo/learn-claude-code/agents (main)
+# $ python agent_learn.py 
+# s01 >> Use a subtask to find what testing framework this project uses
+# [{'role': 'user', 'content': 'Use a subtask to find what testing framework this project uses'}]
+# ToolUseBlock(id='call_00_YkToXiSMy6ccvH0kKmhvofyp', caller=None, input={'prompt': 'Explore the project structure to identify what testing framework is being used. Look for:\n1. Package.json or similar dependency files\n2. Test files and their extensions\n3. Test configuration files\n4. Any test runner scripts\n5. Common test framework indicators like Jest, Mocha, Jasmine, Vitest, etc.\n\nPlease provide a detailed analysis of the testing framework found.', 'description': 'Identify testing framework used in project'}, name='task', type='tool_use')
+# Traceback (most recent call last):
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 250, in <module>
+#     agent_loop(history)
+#     ~~~~~~~~~~^^^^^^^^^
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 221, in agent_loop
+#     output = run_subagent(block.input["prompt"])
+#   File "C:\Users\lolom\repo\learn-claude-code\agents\agent_learn.py", line 163, in run_subagent
+#     messageFromLLM = client.messages.create(
+#         model=model,
+#     ...<3 lines>...
+#         tools=CHILD_TOOLS,
+#     )
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_utils\_utils.py", line 282, in wrapper
+#     return func(*args, **kwargs)
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\resources\messages\messages.py", line 996, in create
+#     return self._post(
+#            ~~~~~~~~~~^
+#         "/v1/messages",
+#         ^^^^^^^^^^^^^^^
+#     ...<30 lines>...
+#         stream_cls=Stream[RawMessageStreamEvent],
+#         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#     )
+#     ^
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_base_client.py", line 1364, in post
+#     return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+#                            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+#   File "C:\Users\lolom\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\anthropic\_base_client.py", line 1137, in request
+#     raise self._make_status_error_from_response(err.response) from None
+# anthropic.BadRequestError: Error code: 400 - {'error': {'message': 'Failed to deserialize the JSON body into the target type: messages: invalid type: string "Explore the project structure to identify what testing framework is being used. Look for:\\n1. Package.json or similar dependency files\\n2. Test files and their extensions\\n3. Test configuration files\\n4. Any test runner scripts\\n5. Common test framework indicators like Jest, Mocha, Jasmine, Vitest, etc.\\n\\nPlease provide a detailed analysis of the testing framework found.", expected a sequence at line 1 column 406', 'type': 'invalid_request_error', 'param': None, 'code': 'invalid_request_error'}}
