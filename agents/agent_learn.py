@@ -10,8 +10,7 @@ WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-SYSTEM = f"You are a coding agent at {WORKDIR}. Use the task tool to delegate exploration or subtasks."
-SUBAGENT_SYSTEM = f"You are a coding subagent at {WORKDIR}. Complete the given task, then summarize your findings."
+SYSTEM = f"You are a coding agent at {WORKDIR}."
 
 
 def safe_path(p: str) -> Path:
@@ -29,8 +28,7 @@ TOOL_HANDLERS = {
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
 }
 
-# Child gets all base tools except task (no recursive spawning)
-CHILD_TOOLS = [
+TOOLS = [
     {
         "name": "run_bash",
         "description": "Run a shell command.",
@@ -72,25 +70,6 @@ CHILD_TOOLS = [
                 "new_text": {"type": "string"},
             },
             "required": ["path", "old_text", "new_text"],
-        },
-    },
-]
-
-# -- Parent tools: base tools + task dispatcher --
-PARENT_TOOLS = CHILD_TOOLS + [
-    {
-        "name": "task",
-        "description": "Spawn a subagent with fresh context. It shares the filesystem but not conversation history.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "prompt": {"type": "string"},
-                "description": {
-                    "type": "string",
-                    "description": "Short description of the task",
-                },
-            },
-            "required": ["prompt"],
         },
     },
 ]
@@ -155,50 +134,6 @@ def run_bash(command: str) -> str:
         return "Error: Timeout (120s)"
 
 
-# -- Subagent: fresh context, filtered tools, summary-only return --
-def run_subagent(prompt: str) -> str:
-    print(f"\033[33m$ run_subagent tools is excuted\033[0m")
-    sub_messages = [{"role": "user", "content": prompt}]
-    for _ in range(30):  # safety limit
-        message = client.messages.create(
-            model=model,
-            max_tokens=8000,
-            system=SUBAGENT_SYSTEM,
-            messages=sub_messages,
-            tools=CHILD_TOOLS,
-        )
-
-        sub_messages.append({"role": "assistant", "content": message.content})
-        if message.stop_reason != "tool_use":
-            break
-        results = []
-        for block in message.content:
-            if block.type == "tool_use":
-                handler = TOOL_HANDLERS.get(block.name)
-                if handler is not None:
-                    output = handler(**block.input)
-                else:
-                    output = f"Unknown tool: {block.name}"
-                results.append(
-                    {
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": output,
-                    }
-                )
-        sub_messages.append({"role": "user", "content": results})
-    # Only the final text returns to the parent -- child context is discarded
-    tmp = []
-    summary = "(no summary)"
-    for b in message.content:
-        if hasattr(b, "text") and b.text != "":
-            tmp.append(b.text)
-    if len(tmp) > 0:
-        summary = "".join(tmp)
-    print(summary)
-    return summary
-
-
 def agent_loop(history):
     while True:
         messageFromLLM = client.messages.create(
@@ -206,7 +141,7 @@ def agent_loop(history):
             max_tokens=8000,
             system=SYSTEM,
             messages=history,
-            tools=PARENT_TOOLS,
+            tools=TOOLS,
         )
 
         history.append({"role": "assistant", "content": messageFromLLM.content})
@@ -215,15 +150,11 @@ def agent_loop(history):
         results = []
         for block in messageFromLLM.content:
             if block.type == "tool_use":
-                if block.name == "task":
-                    print(block)
-                    output = run_subagent(block.input["prompt"])
+                handler = TOOL_HANDLERS.get(block.name)
+                if handler is not None:
+                    output = handler(**block.input)
                 else:
-                    handler = TOOL_HANDLERS.get(block.name)
-                    if handler is not None:
-                        output = handler(**block.input)
-                    else:
-                        output = f"Unknown tool: {block.name}"
+                    output = f"Unknown tool: {block.name}"
                 results.append(
                     {
                         "type": "tool_result",
