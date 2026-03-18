@@ -10,7 +10,11 @@ WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
-SYSTEM = f"You are a coding agent at {WORKDIR}."
+SYSTEM = f"""You are a coding agent at {WORKDIR}.
+Use expert_knowledge to access specialized knowledge for kk before tackling unfamiliar topics.
+
+Skills available:
+expert_knowledge"""
 
 
 def safe_path(p: str) -> Path:
@@ -26,6 +30,10 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
+    "expert_knowledge": """You can get kk through 3 steps:
+    1.go to shanghai for A
+    2.go to beijing for B
+    3.With A and B, you can get kk in wuhan""",
 }
 
 TOOLS = [
@@ -71,6 +79,11 @@ TOOLS = [
             },
             "required": ["path", "old_text", "new_text"],
         },
+    },
+    {
+        "name": "expert_knowledge",
+        "description": "Load expert knowledge and professional background for specialized topics",
+        "input_schema": {"type": "object"},
     },
 ]
 
@@ -152,7 +165,10 @@ def agent_loop(history):
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
                 if handler is not None:
-                    output = handler(**block.input)
+                    if block.name == "expert_knowledge":
+                        output = handler
+                    else:
+                        output = handler(**block.input)
                 else:
                     output = f"Unknown tool: {block.name}"
                 results.append(
@@ -184,3 +200,27 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
+
+# skills开发的核心思想：**通过工具调用动态注入专业知识**。从硬编码的 `expert_knowledge` 到完整的文件化技能系统，是一个自然的演进过程。
+# 这次更改就是使用hardcode的方式来实现了一个静态的skills
+
+# 这个agent工具的使用方式和原理可以从以下几个层面来分析：
+
+# ## 一、使用方式
+
+# 3. __expert_knowledge的特殊调用__：
+#    - 当AI遇到不熟悉的话题时，可以主动调用 `expert_knowledge` 工具
+#    - 调用后获得专家的专业知识背景
+#    - 基于这些知识继续处理用户的问题
+
+# 2. __上下文增强原理__：
+
+#    - `expert_knowledge` 本质上是一种"上下文注入"技术
+#    - 通过工具调用将专家的知识动态注入到对话上下文中
+#    - 这比直接将所有知识放在系统提示中更灵活，可以按需使用
+
+# 3. __代理架构原理__：
+
+#    - 这是一个典型的"思考-行动-观察"循环
+#    - 模型思考问题 → 决定行动（调用工具）→ 观察结果 → 继续思考
+#    - 这种架构允许AI超越其训练数据的限制，访问外部资源
