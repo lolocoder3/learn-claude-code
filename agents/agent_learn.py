@@ -1,34 +1,4 @@
-# Two-layer skill injection that avoids bloating the system prompt:
-
-#     Layer 1 (cheap): skill names in system prompt (~100 tokens/skill)
-#     Layer 2 (on demand): full skill body in tool_result
-
-#     skills/
-#       pdf/
-#         SKILL.md          <-- frontmatter (name, description) + body
-#       code-review/
-#         SKILL.md
-
-#     System prompt:
-#     +--------------------------------------+
-#     | You are a coding agent.              |
-#     | Skills available:                    |
-#     |   - pdf: Process PDF files...        |  <-- Layer 1: metadata only
-#     |   - code-review: Review code...      |
-#     +--------------------------------------+
-
-#     When model calls load_skill("pdf"):
-#     +--------------------------------------+
-#     | tool_result:                         |
-#     | <skill>                              |
-#     |   Full PDF processing instructions   |  <-- Layer 2: full body
-#     |   Step 1: ...                        |
-#     |   Step 2: ...                        |
-#     | </skill>                             |
-#     +--------------------------------------+
-
-# Key insight: "Don't put everything in the system prompt. Load on demand."
-
+import re
 import subprocess
 
 from pathlib import Path
@@ -39,42 +9,59 @@ load_dotenv(override=True)
 WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
+SKILLS_DIR = WORKDIR / "skills"
 
+# -- SkillLoader: scan skills/<name>/SKILL.md with YAML frontmatter --
 class SkillLoader:
-    def __init__(self):
-        self.skills = {
-            "kk": {
-                "description": "how to get kk",
-                "content": """You can get kk through 3 steps:
-                                1.go to shanghai for A
-                                2.go to beijing for B
-                                3.With A and B, you can get kk in wuhan""",
-            },
-            "qq": {
-                "description": "how to get qq",
-                "content": """You can get qq through 3 steps:
-                                1.go to shanghai for AA
-                                2.go to beijing for BB
-                                3.With AA and BB, you can get qq in wuhan""",
-            },
-        }
+    def __init__(self, skills_dir: Path):
+        self.skills_dir = skills_dir
+        self.skills = {}
+        self._load_all()
 
-    def get_content(self, name: str) -> str:
-        skill = self.skills.get(name)
-        if skill:
-            return skill["content"]
-        else:
-            return f"Error: Unknown skill '{name}'. Available: {', '.join(self.skills.keys())}"
+    def _load_all(self):
+        if not self.skills_dir.exists():
+            return
+        for f in sorted(self.skills_dir.rglob("SKILL.md")):
+            text = f.read_text()
+            meta, body = self._parse_frontmatter(text)
+            name = meta.get("name", f.parent.name)
+            self.skills[name] = {"meta": meta, "body": body, "path": str(f)}
+
+    def _parse_frontmatter(self, text: str) -> tuple:
+        """Parse YAML frontmatter between --- delimiters."""
+        match = re.match(r"^---\n(.*?)\n---\n(.*)", text, re.DOTALL)
+        if not match:
+            return {}, text
+        meta = {}
+        for line in match.group(1).strip().splitlines():
+            if ":" in line:
+                key, val = line.split(":", 1)
+                meta[key.strip()] = val.strip()
+        return meta, match.group(2).strip()
 
     def get_descriptions(self) -> str:
-        """Get all skill descriptions as formatted string."""
+        """Layer 1: short descriptions for the system prompt."""
+        if not self.skills:
+            return "(no skills available)"
         lines = []
         for name, skill in self.skills.items():
-            lines.append(f"{name} : {skill['description']}")
+            desc = skill["meta"].get("description", "No description")
+            tags = skill["meta"].get("tags", "")
+            line = f"  - {name}: {desc}"
+            if tags:
+                line += f" [{tags}]"
+            lines.append(line)
         return "\n".join(lines)
 
+    def get_content(self, name: str) -> str:
+        """Layer 2: full skill body returned in tool_result."""
+        skill = self.skills.get(name)
+        if not skill:
+            return f"Error: Unknown skill '{name}'. Available: {', '.join(self.skills.keys())}"
+        return f"<skill name=\"{name}\">\n{skill['body']}\n</skill>"
+
 # Create a global instance
-skill_loader = SkillLoader()
+skill_loader = SkillLoader(SKILLS_DIR)
 
 # Build SYSTEM prompt dynamically using skill_loader.getdescription()
 SYSTEM = f"""You are a coding agent at {WORKDIR}.
@@ -267,51 +254,3 @@ if __name__ == "__main__":
                 if hasattr(block, "text"):
                     print(block.text)
         print()
-
-# __`agent_learn.py` 文件的当前更改总结：__
-
-# __主要变更：__
-
-# 1. __SkillLoader 从函数重构为类__：
-
-#    - 原来的 `SkillLoader()` 函数变为 `SkillLoader` 类
-#    - 添加了 `__init__` 方法初始化技能数据
-#    - 技能数据结构：每个技能包含 `description` 和 `content` 字段
-
-# 2. __新增了两个核心方法__：
-
-#    - `get_content(name: str) -> str`：根据技能名称返回详细内容
-#    - `get_descriptions() -> str`：返回所有技能的格式化描述字符串
-
-# 3. __SYSTEM prompt 动态化__：
-
-#    - 从硬编码的 "kk : how to get kk" 和 "qq : how to get qq"
-#    - 改为使用 `skill_loader.get_descriptions()` 动态获取
-#    - 实现了技能描述的集中管理
-
-# 4. __工具处理优化__：
-
-#    - `TOOL_HANDLERS` 中的 `load_skill` 工具使用 `skill_loader.get_content()`
-#    - 保持了与原有工具调用方式的兼容性
-
-# 5. __代码架构改进__：
-
-#    - 技能数据集中存储在 `SkillLoader` 类中
-#    - 便于未来添加新技能
-#    - 错误处理更加完善（未知技能返回友好错误信息）
-
-# __当前技能数据：__
-
-# - `kk`：描述为 "kk : how to get kk"，包含3个步骤的详细内容
-# - `qq`：描述为 "qq : how to get qq"，包含3个步骤的详细内容
-
-# __设计理念：__ 实现了"两层技能注入"模式：
-
-# - __第一层（系统提示中）__：只包含技能名称和简短描述
-# - __第二层（按需加载）__：通过 `load_skill` 工具获取完整技能内容
-
-# __最终效果：__
-
-# - `SkillLoader` 类现在是一个功能完整的技能管理系统
-# - SYSTEM prompt 动态显示可用技能
-# - 代码更加模块化、可维护、可扩展
