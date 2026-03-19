@@ -13,8 +13,8 @@ SYSTEM = f"""You are a coding agent at {WORKDIR}.
 Use load_skill to access specialized knowledge before tackling unfamiliar topics.
 
 Skills available:
-kk
-qq"""
+kk : how to get kk
+qq : how to get qq"""
 
 
 def safe_path(p: str) -> Path:
