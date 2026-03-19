@@ -1,3 +1,34 @@
+# Two-layer skill injection that avoids bloating the system prompt:
+
+#     Layer 1 (cheap): skill names in system prompt (~100 tokens/skill)
+#     Layer 2 (on demand): full skill body in tool_result
+
+#     skills/
+#       pdf/
+#         SKILL.md          <-- frontmatter (name, description) + body
+#       code-review/
+#         SKILL.md
+
+#     System prompt:
+#     +--------------------------------------+
+#     | You are a coding agent.              |
+#     | Skills available:                    |
+#     |   - pdf: Process PDF files...        |  <-- Layer 1: metadata only
+#     |   - code-review: Review code...      |
+#     +--------------------------------------+
+
+#     When model calls load_skill("pdf"):
+#     +--------------------------------------+
+#     | tool_result:                         |
+#     | <skill>                              |
+#     |   Full PDF processing instructions   |  <-- Layer 2: full body
+#     |   Step 1: ...                        |
+#     |   Step 2: ...                        |
+#     | </skill>                             |
+#     +--------------------------------------+
+
+# Key insight: "Don't put everything in the system prompt. Load on demand."
+
 import subprocess
 
 from pathlib import Path
