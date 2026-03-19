@@ -1,4 +1,3 @@
-import os
 import subprocess
 
 from pathlib import Path
@@ -11,10 +10,11 @@ client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
 SYSTEM = f"""You are a coding agent at {WORKDIR}.
-Use expert_knowledge to access specialized knowledge for kk before tackling unfamiliar topics.
+Use load_skill to access specialized knowledge before tackling unfamiliar topics.
 
 Skills available:
-expert_knowledge"""
+kk
+qq"""
 
 
 def safe_path(p: str) -> Path:
@@ -30,10 +30,7 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
-    "expert_knowledge": """You can get kk through 3 steps:
-    1.go to shanghai for A
-    2.go to beijing for B
-    3.With A and B, you can get kk in wuhan""",
+    "load_skill": lambda **kw: SkillLoader(kw["name"]),
 }
 
 TOOLS = [
@@ -81,9 +78,15 @@ TOOLS = [
         },
     },
     {
-        "name": "expert_knowledge",
+        "name": "load_skill",
         "description": "Load expert knowledge and professional background for specialized topics",
-        "input_schema": {"type": "object"},
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Skill name to load"}
+            },
+            "required": ["name"],
+        },
     },
 ]
 
@@ -147,6 +150,20 @@ def run_bash(command: str) -> str:
         return "Error: Timeout (120s)"
 
 
+def SkillLoader(command: str) -> str:
+    print(f"\033[33m$ SkillLoader is excuted\033[0m")
+    if command == "kk":
+        return """You can get kk through 3 steps:
+    1.go to shanghai for A
+        2.go to beijing for B
+        3.With A and B, you can get kk in wuhan"""
+    else:
+        return """You can get qq through 3 steps:
+    1.go to shanghai for AA
+        2.go to beijing for BB
+        3.With AA and BB, you can get qq in wuhan"""
+
+
 def agent_loop(history):
     while True:
         messageFromLLM = client.messages.create(
@@ -165,10 +182,7 @@ def agent_loop(history):
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
                 if handler is not None:
-                    if block.name == "expert_knowledge":
-                        output = handler
-                    else:
-                        output = handler(**block.input)
+                    output = handler(**block.input)
                 else:
                     output = f"Unknown tool: {block.name}"
                 results.append(
@@ -201,26 +215,66 @@ if __name__ == "__main__":
                     print(block.text)
         print()
 
-# skills开发的核心思想：**通过工具调用动态注入专业知识**。从硬编码的 `expert_knowledge` 到完整的文件化技能系统，是一个自然的演进过程。
-# 这次更改就是使用hardcode的方式来实现了一个静态的skills
+# #基于对 `agents/agent_learn.py` 文件当前更改的分析，以下是详细的commit name和主要更改内容及其思路：
 
-# 这个agent工具的使用方式和原理可以从以下几个层面来分析：
+# ## 主要更改内容
 
-# ## 一、使用方式
+# ### 1. __工具重命名和参数化__
 
-# 3. __expert_knowledge的特殊调用__：
-#    - 当AI遇到不熟悉的话题时，可以主动调用 `expert_knowledge` 工具
-#    - 调用后获得专家的专业知识背景
-#    - 基于这些知识继续处理用户的问题
+# - 将 `expert_knowledge` 工具重命名为 `load_skill`
+# - 从无参数的静态工具改为接受 `name` 参数的动态工具
+# - 更新了工具的input_schema，添加了必需的 `name` 参数
 
-# 2. __上下文增强原理__：
+# ### 2. __技能加载器实现__
 
-#    - `expert_knowledge` 本质上是一种"上下文注入"技术
-#    - 通过工具调用将专家的知识动态注入到对话上下文中
-#    - 这比直接将所有知识放在系统提示中更灵活，可以按需使用
+# - 新增 `SkillLoader()` 函数，根据技能名称返回不同的专业知识
+# - 支持两种技能：`kk` 和 `qq`，分别返回不同的获取步骤
+# - 保持了原有的专业知识内容，但通过函数动态返回
 
-# 3. __代理架构原理__：
+# ### 3. __系统提示更新__
 
-#    - 这是一个典型的"思考-行动-观察"循环
-#    - 模型思考问题 → 决定行动（调用工具）→ 观察结果 → 继续思考
-#    - 这种架构允许AI超越其训练数据的限制，访问外部资源
+# - 更新SYSTEM提示，从"使用expert_knowledge获取kk的知识"改为"使用load_skill获取kk或qq的知识"
+# - 反映了工具功能的扩展
+
+# ### 4. __工具处理逻辑统一化__
+
+# - 移除了对 `expert_knowledge` 的特殊处理逻辑
+# - 所有工具现在都通过 `handler(**block.input)` 统一调用
+# - 简化了 `agent_loop` 函数中的工具分发逻辑
+
+# ### 5. __代码清理__
+
+# - 移除了未使用的 `import os`
+# - 删除了文件末尾的详细注释文档
+# - 保持了代码的简洁性
+
+# ## 更改思路分析
+
+# ### 设计思路演进
+
+# 1. __从静态到动态__：之前的 `expert_knowledge` 是硬编码的单一技能，现在改为可参数化的 `load_skill`，支持多种技能
+# 2. __从单一到多样__：支持 `kk` 和 `qq` 两种技能，为未来扩展更多技能奠定了基础
+# 3. __从特殊处理到统一接口__：移除了特殊处理逻辑，所有工具使用相同的调用模式
+
+# ### 架构改进
+
+# - __可扩展性__：通过添加新的条件分支，可以轻松支持更多技能
+# - __一致性__：所有工具现在都有统一的参数化接口
+# - __清晰性__：技能加载逻辑集中在一个函数中，便于维护
+
+# ### 技能系统演进路径
+
+# 这次更改是技能系统演进的重要一步：
+
+# 1. __阶段1__：硬编码的单一技能 (`expert_knowledge`)
+# 2. __阶段2__：参数化的多技能系统 (`load_skill`)
+# 3. __未来阶段__：可能发展为从文件系统动态加载技能
+
+# ### 技术实现亮点
+
+# - 保持了向后兼容性（kk技能内容不变）
+# - 通过函数封装实现了更好的代码组织
+# - 打印执行日志便于调试
+# - 统一的错误处理机制
+
+# 这个更改体现了agent架构从简单到复杂、从硬编码到可配置的自然演进过程，为构建更强大的技能系统奠定了基础。
