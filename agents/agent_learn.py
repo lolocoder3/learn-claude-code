@@ -40,12 +40,48 @@ WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
 
+class SkillLoader:
+    def __init__(self):
+        self.skills = {
+            "kk": {
+                "description": "how to get kk",
+                "content": """You can get kk through 3 steps:
+                                1.go to shanghai for A
+                                2.go to beijing for B
+                                3.With A and B, you can get kk in wuhan""",
+            },
+            "qq": {
+                "description": "how to get qq",
+                "content": """You can get qq through 3 steps:
+                                1.go to shanghai for AA
+                                2.go to beijing for BB
+                                3.With AA and BB, you can get qq in wuhan""",
+            },
+        }
+
+    def get_content(self, name: str) -> str:
+        skill = self.skills.get(name)
+        if skill:
+            return skill["content"]
+        else:
+            return f"Error: Unknown skill '{name}'. Available: {', '.join(self.skills.keys())}"
+
+    def get_descriptions(self) -> str:
+        """Get all skill descriptions as formatted string."""
+        lines = []
+        for name, skill in self.skills.items():
+            lines.append(f"{name} : {skill['description']}")
+        return "\n".join(lines)
+
+# Create a global instance
+skill_loader = SkillLoader()
+
+# Build SYSTEM prompt dynamically using skill_loader.getdescription()
 SYSTEM = f"""You are a coding agent at {WORKDIR}.
 Use load_skill to access specialized knowledge before tackling unfamiliar topics.
 
 Skills available:
-kk : how to get kk
-qq : how to get qq"""
+{skill_loader.get_descriptions()}"""
 
 
 def safe_path(p: str) -> Path:
@@ -61,7 +97,7 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
-    "load_skill": lambda **kw: SkillLoader(kw["name"]),
+    "load_skill": lambda **kw: skill_loader.get_content(kw["name"]),
 }
 
 TOOLS = [
@@ -181,20 +217,6 @@ def run_bash(command: str) -> str:
         return "Error: Timeout (120s)"
 
 
-def SkillLoader(command: str) -> str:
-    print(f"\033[33m$ SkillLoader is excuted\033[0m")
-    if command == "kk":
-        return """You can get kk through 3 steps:
-    1.go to shanghai for A
-        2.go to beijing for B
-        3.With A and B, you can get kk in wuhan"""
-    else:
-        return """You can get qq through 3 steps:
-    1.go to shanghai for AA
-        2.go to beijing for BB
-        3.With AA and BB, you can get qq in wuhan"""
-
-
 def agent_loop(history):
     while True:
         messageFromLLM = client.messages.create(
@@ -246,66 +268,50 @@ if __name__ == "__main__":
                     print(block.text)
         print()
 
-# #基于对 `agents/agent_learn.py` 文件当前更改的分析，以下是详细的commit name和主要更改内容及其思路：
+# __`agent_learn.py` 文件的当前更改总结：__
 
-# ## 主要更改内容
+# __主要变更：__
 
-# ### 1. __工具重命名和参数化__
+# 1. __SkillLoader 从函数重构为类__：
 
-# - 将 `expert_knowledge` 工具重命名为 `load_skill`
-# - 从无参数的静态工具改为接受 `name` 参数的动态工具
-# - 更新了工具的input_schema，添加了必需的 `name` 参数
+#    - 原来的 `SkillLoader()` 函数变为 `SkillLoader` 类
+#    - 添加了 `__init__` 方法初始化技能数据
+#    - 技能数据结构：每个技能包含 `description` 和 `content` 字段
 
-# ### 2. __技能加载器实现__
+# 2. __新增了两个核心方法__：
 
-# - 新增 `SkillLoader()` 函数，根据技能名称返回不同的专业知识
-# - 支持两种技能：`kk` 和 `qq`，分别返回不同的获取步骤
-# - 保持了原有的专业知识内容，但通过函数动态返回
+#    - `get_content(name: str) -> str`：根据技能名称返回详细内容
+#    - `get_descriptions() -> str`：返回所有技能的格式化描述字符串
 
-# ### 3. __系统提示更新__
+# 3. __SYSTEM prompt 动态化__：
 
-# - 更新SYSTEM提示，从"使用expert_knowledge获取kk的知识"改为"使用load_skill获取kk或qq的知识"
-# - 反映了工具功能的扩展
+#    - 从硬编码的 "kk : how to get kk" 和 "qq : how to get qq"
+#    - 改为使用 `skill_loader.get_descriptions()` 动态获取
+#    - 实现了技能描述的集中管理
 
-# ### 4. __工具处理逻辑统一化__
+# 4. __工具处理优化__：
 
-# - 移除了对 `expert_knowledge` 的特殊处理逻辑
-# - 所有工具现在都通过 `handler(**block.input)` 统一调用
-# - 简化了 `agent_loop` 函数中的工具分发逻辑
+#    - `TOOL_HANDLERS` 中的 `load_skill` 工具使用 `skill_loader.get_content()`
+#    - 保持了与原有工具调用方式的兼容性
 
-# ### 5. __代码清理__
+# 5. __代码架构改进__：
 
-# - 移除了未使用的 `import os`
-# - 删除了文件末尾的详细注释文档
-# - 保持了代码的简洁性
+#    - 技能数据集中存储在 `SkillLoader` 类中
+#    - 便于未来添加新技能
+#    - 错误处理更加完善（未知技能返回友好错误信息）
 
-# ## 更改思路分析
+# __当前技能数据：__
 
-# ### 设计思路演进
+# - `kk`：描述为 "kk : how to get kk"，包含3个步骤的详细内容
+# - `qq`：描述为 "qq : how to get qq"，包含3个步骤的详细内容
 
-# 1. __从静态到动态__：之前的 `expert_knowledge` 是硬编码的单一技能，现在改为可参数化的 `load_skill`，支持多种技能
-# 2. __从单一到多样__：支持 `kk` 和 `qq` 两种技能，为未来扩展更多技能奠定了基础
-# 3. __从特殊处理到统一接口__：移除了特殊处理逻辑，所有工具使用相同的调用模式
+# __设计理念：__ 实现了"两层技能注入"模式：
 
-# ### 架构改进
+# - __第一层（系统提示中）__：只包含技能名称和简短描述
+# - __第二层（按需加载）__：通过 `load_skill` 工具获取完整技能内容
 
-# - __可扩展性__：通过添加新的条件分支，可以轻松支持更多技能
-# - __一致性__：所有工具现在都有统一的参数化接口
-# - __清晰性__：技能加载逻辑集中在一个函数中，便于维护
+# __最终效果：__
 
-# ### 技能系统演进路径
-
-# 这次更改是技能系统演进的重要一步：
-
-# 1. __阶段1__：硬编码的单一技能 (`expert_knowledge`)
-# 2. __阶段2__：参数化的多技能系统 (`load_skill`)
-# 3. __未来阶段__：可能发展为从文件系统动态加载技能
-
-# ### 技术实现亮点
-
-# - 保持了向后兼容性（kk技能内容不变）
-# - 通过函数封装实现了更好的代码组织
-# - 打印执行日志便于调试
-# - 统一的错误处理机制
-
-# 这个更改体现了agent架构从简单到复杂、从硬编码到可配置的自然演进过程，为构建更强大的技能系统奠定了基础。
+# - `SkillLoader` 类现在是一个功能完整的技能管理系统
+# - SYSTEM prompt 动态显示可用技能
+# - 代码更加模块化、可维护、可扩展
