@@ -12,6 +12,20 @@ model = "deepseek-chat"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
+THRESHOLD = 50000
+KEEP_RECENT = 3
+
+def estimate_tokens(messages: list) -> int:
+    """Rough token count: ~4 chars per token."""
+    return len(str(messages)) // 4
+
+def micro_compact(messages: list) -> list:
+    shorted_message = messages
+    return shorted_message
+
+def auto_compact(messages: list) -> list:
+    summarised_message = messages
+    return summarised_message
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
@@ -26,6 +40,7 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
+    "compact": lambda **kw: "Manual compression requested.",
 }
 
 TOOLS = [
@@ -70,6 +85,19 @@ TOOLS = [
                 "new_text": {"type": "string"},
             },
             "required": ["path", "old_text", "new_text"],
+        },
+    },
+    {
+        "name": "compact",
+        "description": "Trigger manual conversation compression.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "focus": {
+                    "type": "string",
+                    "description": "What to preserve in the summary",
+                }
+            },
         },
     },
 ]
@@ -136,6 +164,12 @@ def run_bash(command: str) -> str:
 
 def agent_loop(history):
     while True:
+        # Layer 1: micro_compact before each LLM call
+        micro_compact(history)
+        # Layer 2: auto_compact if token estimate exceeds threshold
+        if estimate_tokens(history) > THRESHOLD:
+            print("[auto_compact triggered]")
+            history[:] = auto_compact(history)
         messageFromLLM = client.messages.create(
             model=model,
             max_tokens=8000,
@@ -148,10 +182,14 @@ def agent_loop(history):
         if messageFromLLM.stop_reason != "tool_use":
             return
         results = []
+        manual_compact = False
         for block in messageFromLLM.content:
             if block.type == "tool_use":
                 handler = TOOL_HANDLERS.get(block.name)
-                if handler is not None:
+                if block.name == "compact":
+                    manual_compact = True
+                    output = "Compressing..."
+                elif handler is not None:
                     output = handler(**block.input)
                 else:
                     output = f"Unknown tool: {block.name}"
@@ -163,6 +201,10 @@ def agent_loop(history):
                     }
                 )
         history.append({"role": "user", "content": results})
+         # Layer 3: manual compact triggered by the compact tool
+        if manual_compact:
+            print("[manual compact]")
+            history[:] = auto_compact(history)
 
 
 if __name__ == "__main__":
