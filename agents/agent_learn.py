@@ -1,6 +1,7 @@
 import re
 import subprocess
 import json
+import time
 from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
@@ -13,6 +14,7 @@ model = "deepseek-chat"
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
 THRESHOLD = 50000
+TRANSCRIPT_DIR = WORKDIR / ".transcripts"
 KEEP_RECENT = 3
 
 def estimate_tokens(messages: list) -> int:
@@ -48,7 +50,15 @@ def micro_compact(messages: list) -> list:
     return messages
 
 
+# -- Layer 2: auto_compact - save transcript, summarize, replace messages --
 def auto_compact(messages: list) -> list:
+    # Save full transcript to disk
+    TRANSCRIPT_DIR.mkdir(exist_ok=True)
+    transcript_path = TRANSCRIPT_DIR / f"transcript_{int(time.time())}.jsonl"
+    with open(transcript_path, "w") as f:
+        for msg in messages:
+            f.write(json.dumps(msg, default=str) + "\n")
+    print(f"[transcript saved: {transcript_path}]")
     # Ask LLM to summarize
     conversation_text = json.dumps(messages, default=str)[:80000]
     response = client.messages.create(
@@ -62,7 +72,7 @@ def auto_compact(messages: list) -> list:
     summary = response.content[0].text
     # Replace all messages with compressed summary
     return [
-        {"role": "user", "content": f"[Conversation compressed. Transcript: {summary}"},
+        {"role": "user", "content": f"[Conversation compressed. Transcript: {transcript_path}]\n\n{summary}"},
         {"role": "assistant", "content": "Understood. I have the context from the summary. Continuing."},
     ]
 
