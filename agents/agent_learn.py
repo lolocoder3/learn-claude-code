@@ -1,6 +1,6 @@
 import re
 import subprocess
-
+import json
 from pathlib import Path
 import anthropic
 from dotenv import load_dotenv
@@ -49,8 +49,23 @@ def micro_compact(messages: list) -> list:
 
 
 def auto_compact(messages: list) -> list:
-    summarised_message = messages
-    return summarised_message
+    # Ask LLM to summarize
+    conversation_text = json.dumps(messages, default=str)[:80000]
+    response = client.messages.create(
+        model=model,
+        messages=[{"role": "user", "content":
+            "Summarize this conversation for continuity. Include: "
+            "1) What was accomplished, 2) Current state, 3) Key decisions made. "
+            "Be concise but preserve critical details.\n\n" + conversation_text}],
+        max_tokens=2000,
+    )
+    summary = response.content[0].text
+    # Replace all messages with compressed summary
+    return [
+        {"role": "user", "content": f"[Conversation compressed. Transcript: {summary}"},
+        {"role": "assistant", "content": "Understood. I have the context from the summary. Continuing."},
+    ]
+
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
