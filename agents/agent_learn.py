@@ -1,6 +1,6 @@
 import subprocess
 from pathlib import Path
-
+import json
 import anthropic
 from dotenv import load_dotenv
 
@@ -12,6 +12,47 @@ model = "deepseek-chat"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
+
+# -- TaskManager: CRUD with dependency graph, persisted as JSON files --
+class TaskManager:
+    def __init__(self):
+        self.tasks = []
+        self._next_id = 0
+
+    def create(self, subject: str, description: str = "") -> str:
+        task = {"id" : self._next_id, "subject" : subject, "description": description}
+        self.tasks.append(task)
+        print(f'=== > {task["id"]} is added ')
+        self._next_id += 1  # 递增ID以便下一个任务有不同的ID
+        return json.dumps(task)
+    
+    def get(self, task_id: int) -> str:
+        for t in self.tasks:
+            if t['id'] == task_id:
+                print(f'=== > {t["id"]} is get ')
+                return json.dumps(t)
+        return "task not existed"
+
+    def update(self, task_id: int) -> str:
+        for i, t in enumerate(self.tasks):
+            if t['id'] == task_id:
+                # 删除找到的任务
+                print(f'=== > {t["id"]} is updated ')
+                del self.tasks[i]
+                return f"Task {task_id} is done successfully"
+        return "task not existed"
+
+    def list_all(self) -> str:
+        if len(self.tasks) == 0:
+            return "No tasks"
+        lines = []
+        for t in self.tasks:
+            lines.append(f" #{t['id']}: {t['subject']}")
+        print("===>")
+        print(lines)
+        return "\n".join(lines)
+
+TASKS = TaskManager()
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
@@ -26,6 +67,10 @@ TOOL_HANDLERS = {
     "read_file": lambda **kw: read_file(kw["path"], kw.get("limit")),
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
+    "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"]),
+    "task_list":   lambda **kw: TASKS.list_all(),
+    "task_get":    lambda **kw: TASKS.get(kw["task_id"]),
 }
 
 TOOLS = [
@@ -70,6 +115,49 @@ TOOLS = [
                 "new_text": {"type": "string"},
             },
             "required": ["path", "old_text", "new_text"],
+        },
+    },
+    {
+        "name": "task_create",
+        "description": "Create a new task.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subject": {"type": "string"},
+                "description": {"type": "string"},
+            },
+            "required": ["subject"],
+        },
+    },
+    {
+        "name": "task_update",
+        "description": "Update a task's status or dependencies.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "integer"},
+                "status": {
+                    "type": "string",
+                    "enum": ["pending", "in_progress", "completed"],
+                },
+                "addBlockedBy": {"type": "array", "items": {"type": "integer"}},
+                "addBlocks": {"type": "array", "items": {"type": "integer"}},
+            },
+            "required": ["task_id"],
+        },
+    },
+    {
+        "name": "task_list",
+        "description": "List all tasks with status summary.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "task_get",
+        "description": "Get full details of a task by ID.",
+        "input_schema": {
+            "type": "object",
+            "properties": {"task_id": {"type": "integer"}},
+            "required": ["task_id"],
         },
     },
 ]
@@ -159,7 +247,7 @@ def agent_loop(history):
                     )
                 except Exception as e:
                     output = f"Error: {e}"
-                print(f"> {block.name}: {str(output)[:200]}")
+                print(f"AGENT LOOP > {block.name}: {str(output)[:200]}")
                 results.append(
                     {
                         "type": "tool_result",
