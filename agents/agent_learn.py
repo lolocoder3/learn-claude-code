@@ -44,10 +44,12 @@ class TaskManager:
     def get(self, task_id: int) -> str:
         return json.dumps(self._load(task_id), ensure_ascii=False)
 
-    def update(self, task_id: int) -> str:
+    def update(self, task_id: int, description: str) -> str:
         task = self._load(task_id)
+        if description is not None:
+            task["description"] = description
         self._save(task)
-        return "task not existed"
+        return f"Task {task_id} updated" 
 
     def list_all(self) -> str:
         tasks = []
@@ -80,7 +82,7 @@ TOOL_HANDLERS = {
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
     "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
-    "task_update": lambda **kw: TASKS.update(kw["task_id"]),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw["description"]),
     "task_list": lambda **kw: TASKS.list_all(),
     "task_get": lambda **kw: TASKS.get(kw["task_id"]),
 }
