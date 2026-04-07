@@ -9,50 +9,61 @@ load_dotenv(override=True)
 WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
 model = "deepseek-chat"
+TASKS_DIR = WORKDIR / ".tasks"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
 
 # -- TaskManager: CRUD with dependency graph, persisted as JSON files --
 class TaskManager:
-    def __init__(self):
-        self.tasks = []
-        self._next_id = 0
+    def __init__(self, tasks_dir: Path):
+        self.dir = tasks_dir
+        self.dir.mkdir(exist_ok=True)
+        self._next_id = self._max_id() + 1
+
+    def _max_id(self) -> int:
+        ids = [int(f.stem.split("_")[1]) for f in self.dir.glob("task_*.json")]
+        return max(ids) if ids else 0
+    
+    def _load(self, task_id: int) -> dict:
+        path = self.dir / f"task_{task_id}.json"
+        if not path.exists():
+            raise ValueError(f"Task {task_id} not found")
+        return json.loads(path.read_text())
+
+    def _save(self, task: dict):
+        path = self.dir / f"task_{task['id']}.json"
+        path.write_text(json.dumps(task))
 
     def create(self, subject: str, description: str = "") -> str:
         task = {"id" : self._next_id, "subject" : subject, "description": description}
-        self.tasks.append(task)
+        self._save(task)
+        self._next_id += 1
         print(f'=== > {task["id"]} is added ')
-        self._next_id += 1  # 递增ID以便下一个任务有不同的ID
         return json.dumps(task)
     
     def get(self, task_id: int) -> str:
-        for t in self.tasks:
-            if t['id'] == task_id:
-                print(f'=== > {t["id"]} is get ')
-                return json.dumps(t)
-        return "task not existed"
+        return json.dumps(self._load(task_id))
 
     def update(self, task_id: int) -> str:
-        for i, t in enumerate(self.tasks):
-            if t['id'] == task_id:
-                # 删除找到的任务
-                print(f'=== > {t["id"]} is updated ')
-                del self.tasks[i]
-                return f"Task {task_id} is done successfully"
+        task = self._load(task_id)
+        self._save(task)
         return "task not existed"
 
     def list_all(self) -> str:
-        if len(self.tasks) == 0:
-            return "No tasks"
+        tasks = []
+        for f in sorted(self.dir.glob("task_*.json")):
+            tasks.append(json.loads(f.read_text()))
+        if not tasks:
+            return "No tasks."
         lines = []
-        for t in self.tasks:
+        for t in tasks:
             lines.append(f" #{t['id']}: {t['subject']}")
         print("===>")
         print(lines)
         return "\n".join(lines)
 
-TASKS = TaskManager()
+TASKS = TaskManager(TASKS_DIR)
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
