@@ -13,6 +13,8 @@ TASKS_DIR = WORKDIR / ".tasks"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
+# use agents\tests\prompt\test_task_manager_simple_CN.txt ,could see encoded text in /task/*.json
+# but see ok with agents\tests\prompt\test_task_manager_simple_EN.txt 
 
 # -- TaskManager: CRUD with dependency graph, persisted as JSON files --
 class TaskManager:

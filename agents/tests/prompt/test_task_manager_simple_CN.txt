@@ -1,0 +1,46 @@
+# Task Manager 功能测试
+
+请按顺序测试 task manager 的各项功能，并在每个步骤后报告结果：
+
+## 步骤 1: 创建任务
+使用 task_create 工具创建 4 个任务：
+- 任务1: subject="实现用户认证系统", description="添加登录、注册和权限管理"
+- 任务2: subject="设计数据库架构", description="创建用户表和权限表"
+- 任务3: subject="编写API接口", description="实现REST API"
+- 任务4: subject="前端登录页面", description="创建登录界面"
+
+## 步骤 2: 列出所有任务
+使用 task_list 工具查看所有任务，确认：
+- 4 个任务都已创建
+- 每个任务的 ID、主题、描述都正确显示
+
+## 步骤 3: 查看任务详情
+使用 task_get 查看每个任务的完整详情：
+- task_get(task_id=1)
+- task_get(task_id=2)
+- 确认返回的 JSON 包含所有字段（id, subject, description, status 等）
+
+## 步骤 4: 创建更多任务
+再创建 2 个任务来测试持续添加功能：
+- 任务5: subject="编写单元测试", description="为核心功能编写测试用例"
+- 任务6: subject="部署到生产环境", description="配置服务器和部署应用"
+
+## 步骤 5: 再次列出所有任务
+使用 task_list 确认现在有 6 个任务
+
+## 步骤 6: 验证数据持久化
+检查 .tasks/ 目录，确认：
+- 每个任务都保存为独立的 JSON 文件
+- 文件名格式为 task_<id>.json
+- 文件内容包含完整的任务信息
+
+## 步骤 7: 查看特定任务详情
+随机选择几个任务 ID，使用 task_get 验证数据完整性
+
+---
+**验证要点：**
+✓ task_create 能正确创建任务并返回 JSON
+✓ task_list 能显示所有任务的简洁摘要
+✓ task_get 能返回任务的完整详情
+✓ 任务持久化到 .tasks/ 目录的 JSON 文件
+✓ 任务 ID 自动递增且唯一
