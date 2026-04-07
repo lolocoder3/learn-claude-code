@@ -14,7 +14,8 @@ TASKS_DIR = WORKDIR / ".tasks"
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
 # use agents\tests\prompt\test_task_manager_simple_CN.txt ,could see encoded text in /task/*.json
-# but see ok with agents\tests\prompt\test_task_manager_simple_EN.txt 
+# but see ok with agents\tests\prompt\test_task_manager_simple_EN.txt
+
 
 # -- TaskManager: CRUD with dependency graph, persisted as JSON files --
 class TaskManager:
@@ -26,26 +27,26 @@ class TaskManager:
     def _max_id(self) -> int:
         ids = [int(f.stem.split("_")[1]) for f in self.dir.glob("task_*.json")]
         return max(ids) if ids else 0
-    
+
     def _load(self, task_id: int) -> dict:
         path = self.dir / f"task_{task_id}.json"
         if not path.exists():
             raise ValueError(f"Task {task_id} not found")
-        return json.loads(path.read_text())
+        return json.loads(path.read_text(encoding="utf-8"))
 
     def _save(self, task: dict):
         path = self.dir / f"task_{task['id']}.json"
-        path.write_text(json.dumps(task))
+        path.write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
 
     def create(self, subject: str, description: str = "") -> str:
-        task = {"id" : self._next_id, "subject" : subject, "description": description}
+        task = {"id": self._next_id, "subject": subject, "description": description}
         self._save(task)
         self._next_id += 1
         print(f'=== > {task["id"]} is added ')
-        return json.dumps(task)
-    
+        return json.dumps(task, ensure_ascii=False)
+
     def get(self, task_id: int) -> str:
-        return json.dumps(self._load(task_id))
+        return json.dumps(self._load(task_id), ensure_ascii=False)
 
     def update(self, task_id: int) -> str:
         task = self._load(task_id)
@@ -55,7 +56,7 @@ class TaskManager:
     def list_all(self) -> str:
         tasks = []
         for f in sorted(self.dir.glob("task_*.json")):
-            tasks.append(json.loads(f.read_text()))
+            tasks.append(json.loads(f.read_text(encoding="utf-8")))
         if not tasks:
             return "No tasks."
         lines = []
@@ -65,7 +66,9 @@ class TaskManager:
         print(lines)
         return "\n".join(lines)
 
+
 TASKS = TaskManager(TASKS_DIR)
+
 
 def safe_path(p: str) -> Path:
     path = (WORKDIR / p).resolve()
@@ -82,8 +85,8 @@ TOOL_HANDLERS = {
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
     "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
     "task_update": lambda **kw: TASKS.update(kw["task_id"]),
-    "task_list":   lambda **kw: TASKS.list_all(),
-    "task_get":    lambda **kw: TASKS.get(kw["task_id"]),
+    "task_list": lambda **kw: TASKS.list_all(),
+    "task_get": lambda **kw: TASKS.get(kw["task_id"]),
 }
 
 TOOLS = [
