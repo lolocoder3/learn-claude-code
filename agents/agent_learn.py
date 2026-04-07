@@ -87,18 +87,6 @@ TOOL_HANDLERS = {
     "task_get": lambda **kw: TASKS.get(kw["task_id"]),
 }
 
-# ## 测试总结
-
-# **成功测试的功能：**
-# 1. ✅ **task_create** - 成功创建了 3 个中文任务
-# 2. ✅ **task_list** - 成功列出所有任务，中文显示正常无乱码
-# 3. ✅ **task_get** - 成功获取单个任务的详细信息
-
-# **发现的问题：**
-# 1. ❌ **task_update** - 无法更新任务描述，工具功能有限，只支持状态更新和依赖关系管理
-
-# **建议：**
-# task_update 工具可能需要扩展功能以支持描述更新，或者需要单独的编辑工具来修改任务内容。
 
 TOOLS = [
     {
@@ -169,6 +157,7 @@ TOOLS = [
                 },
                 "addBlockedBy": {"type": "array", "items": {"type": "integer"}},
                 "addBlocks": {"type": "array", "items": {"type": "integer"}},
+                "description": {"type": "string"},
             },
             "required": ["task_id"],
         },
