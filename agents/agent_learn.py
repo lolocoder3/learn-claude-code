@@ -33,7 +33,9 @@ class TaskManager:
 
     def _save(self, task: dict):
         path = self.dir / f"task_{task['id']}.json"
-        path.write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
+        path.write_text(
+            json.dumps(task, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
 
     def create(self, subject: str, description: str = "") -> str:
         task = {
@@ -47,10 +49,10 @@ class TaskManager:
         }
         self._save(task)
         self._next_id += 1
-        return json.dumps(task, ensure_ascii=False)
+        return json.dumps(task, ensure_ascii=False, indent=2)
 
     def get(self, task_id: int) -> str:
-        return json.dumps(self._load(task_id), ensure_ascii=False)
+        return json.dumps(self._load(task_id), ensure_ascii=False, indent=2)
 
     def update(
         self,
@@ -90,7 +92,7 @@ class TaskManager:
                 except ValueError:
                     pass
         self._save(task)
-        return f"Task {task_id} updated"
+        return json.dumps(task, indent=2)
 
     def _clear_dependency(self, completed_id: int):
         """Remove completed_id from all other tasks' blockedBy lists."""
