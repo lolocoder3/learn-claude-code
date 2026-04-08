@@ -13,6 +13,7 @@ TASKS_DIR = WORKDIR / ".tasks"
 
 SYSTEM = f"You are a coding agent at {WORKDIR}. Use tools to solve tasks."
 
+
 # -- TaskManager: CRUD with dependency graph, persisted as JSON files --
 class TaskManager:
     def __init__(self, tasks_dir: Path):
@@ -35,7 +36,15 @@ class TaskManager:
         path.write_text(json.dumps(task, ensure_ascii=False), encoding="utf-8")
 
     def create(self, subject: str, description: str = "") -> str:
-        task = {"id": self._next_id, "subject": subject, "description": description}
+        task = {
+            "id": self._next_id,
+            "subject": subject,
+            "description": description,
+            "status": "pending",
+            "blockedBy": [],
+            "blocks": [],
+            "owner": "",
+        }
         self._save(task)
         self._next_id += 1
         print(f'=== > {task["id"]} is added ')
@@ -44,12 +53,57 @@ class TaskManager:
     def get(self, task_id: int) -> str:
         return json.dumps(self._load(task_id), ensure_ascii=False)
 
-    def update(self, task_id: int, description: str) -> str:
+    def update(
+        self,
+        task_id: int,
+        status: str = "",
+        add_blocked_by: list = [],
+        add_blocks: list = [],
+    ) -> str:
+        print(f"DEBUG: update called with task_id={task_id}, status={status}, add_blocked_by={add_blocked_by}, add_blocks={add_blocks}")
         task = self._load(task_id)
-        if description is not None:
-            task["description"] = description
+        if status:
+            if status not in ("pending", "in_progress", "completed"):
+                raise ValueError(f"Invalid status: {status}")
+            task["status"] = status
+            # When a task is completed, remove it from all other tasks' blockedBy
+            if status == "completed":
+                self._clear_dependency(task_id)
+        if add_blocked_by:
+            print(f"DEBUG: Adding blocked_by: {add_blocked_by}")
+            task["blockedBy"] = list(set(task["blockedBy"] + add_blocked_by))
+            # Bidirectional: also update the blocking tasks' blocks lists
+            for blocking_id in add_blocked_by:
+                try:
+                    blocking = self._load(blocking_id)
+                    if task_id not in blocking["blocks"]:
+                        blocking["blocks"].append(task_id)
+                        self._save(blocking)
+                except ValueError:
+                    pass
+        if add_blocks:
+            print(f"DEBUG: Adding blocks: {add_blocks}")
+            task["blocks"] = list(set(task["blocks"] + add_blocks))
+            # Bidirectional: also update the blocked tasks' blockedBy lists
+            for blocked_id in add_blocks:
+                try:
+                    blocked = self._load(blocked_id)
+                    if task_id not in blocked["blockedBy"]:
+                        blocked["blockedBy"].append(task_id)
+                        self._save(blocked)
+                except ValueError:
+                    pass
         self._save(task)
-        return f"Task {task_id} updated" 
+        print(f"DEBUG: Task {task_id} saved: blockedBy={task['blockedBy']}, blocks={task['blocks']}")
+        return f"Task {task_id} updated"
+
+    def _clear_dependency(self, completed_id: int):
+        """Remove completed_id from all other tasks' blockedBy lists."""
+        for f in self.dir.glob("task_*.json"):
+            task = json.loads(f.read_text(encoding="utf-8"))
+            if completed_id in task.get("blockedBy", []):
+                task["blockedBy"].remove(completed_id)
+                self._save(task)
 
     def list_all(self) -> str:
         tasks = []
@@ -82,7 +136,7 @@ TOOL_HANDLERS = {
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
     "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
-    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw["description"]),
+    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status", ""), kw.get("addBlockedBy", []), kw.get("addBlocks", [])),
     "task_list": lambda **kw: TASKS.list_all(),
     "task_get": lambda **kw: TASKS.get(kw["task_id"]),
 }
@@ -179,7 +233,7 @@ TOOLS = [
 ]
 
 
-def read_file(path: str, limit: int = None) -> str:
+def read_file(path: str, limit: int | None = None) -> str:
     print(f"\033[33m$ read_file tools is excuted\033[0m")
     try:
         # 使用 errors='replace' 自动处理编码问题，替换无法解码的字符
