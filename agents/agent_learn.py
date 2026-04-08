@@ -47,7 +47,6 @@ class TaskManager:
         }
         self._save(task)
         self._next_id += 1
-        print(f'=== > {task["id"]} is added ')
         return json.dumps(task, ensure_ascii=False)
 
     def get(self, task_id: int) -> str:
@@ -60,7 +59,6 @@ class TaskManager:
         add_blocked_by: list = [],
         add_blocks: list = [],
     ) -> str:
-        print(f"DEBUG: update called with task_id={task_id}, status={status}, add_blocked_by={add_blocked_by}, add_blocks={add_blocks}")
         task = self._load(task_id)
         if status:
             if status not in ("pending", "in_progress", "completed"):
@@ -70,7 +68,6 @@ class TaskManager:
             if status == "completed":
                 self._clear_dependency(task_id)
         if add_blocked_by:
-            print(f"DEBUG: Adding blocked_by: {add_blocked_by}")
             task["blockedBy"] = list(set(task["blockedBy"] + add_blocked_by))
             # Bidirectional: also update the blocking tasks' blocks lists
             for blocking_id in add_blocked_by:
@@ -82,7 +79,6 @@ class TaskManager:
                 except ValueError:
                     pass
         if add_blocks:
-            print(f"DEBUG: Adding blocks: {add_blocks}")
             task["blocks"] = list(set(task["blocks"] + add_blocks))
             # Bidirectional: also update the blocked tasks' blockedBy lists
             for blocked_id in add_blocks:
@@ -94,7 +90,6 @@ class TaskManager:
                 except ValueError:
                     pass
         self._save(task)
-        print(f"DEBUG: Task {task_id} saved: blockedBy={task['blockedBy']}, blocks={task['blocks']}")
         return f"Task {task_id} updated"
 
     def _clear_dependency(self, completed_id: int):
@@ -113,9 +108,13 @@ class TaskManager:
             return "No tasks."
         lines = []
         for t in tasks:
-            lines.append(f" #{t['id']}: {t['subject']}")
-        print("===>")
-        print(lines)
+            marker = {"pending": "[ ]", "in_progress": "[>]", "completed": "[x]"}.get(
+                t["status"], "[?]"
+            )
+            blocked = f" (blocked by: {t['blockedBy']})" if t.get("blockedBy") else ""
+            lines.append(f"{marker} #{t['id']}: {t['subject']}{blocked}")
+        print("list_all ===> " + "\n".join(lines))
+        print()
         return "\n".join(lines)
 
 
@@ -136,7 +135,12 @@ TOOL_HANDLERS = {
     "write_file": lambda **kw: write_file(kw["path"], kw["content"]),
     "edit_file": lambda **kw: edit_file(kw["path"], kw["old_text"], kw["new_text"]),
     "task_create": lambda **kw: TASKS.create(kw["subject"], kw.get("description", "")),
-    "task_update": lambda **kw: TASKS.update(kw["task_id"], kw.get("status", ""), kw.get("addBlockedBy", []), kw.get("addBlocks", [])),
+    "task_update": lambda **kw: TASKS.update(
+        kw["task_id"],
+        kw.get("status", ""),
+        kw.get("addBlockedBy", []),
+        kw.get("addBlocks", []),
+    ),
     "task_list": lambda **kw: TASKS.list_all(),
     "task_get": lambda **kw: TASKS.get(kw["task_id"]),
 }
