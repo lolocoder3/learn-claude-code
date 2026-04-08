@@ -69,6 +69,16 @@ class TaskManager:
             # When a task is completed, remove it from all other tasks' blockedBy
             if status == "completed":
                 self._clear_dependency(task_id)
+#                 - __问题分析__：程序运行时日志显示 `task_update` 操作中 `blocks` 字段被截断显示为 `[`，同时任务完成后 `blocks` 字段未正确清空。
+
+# - __根本原因__：
+
+#   - 当任务标记为完成时，`TaskManager.update()` 方法会调用 `_clear_dependency()` 从其他任务的 `blockedBy` 列表中移除该任务ID，但未清空已完成任务自身的 `blocks` 列表
+#   - `update()` 方法返回的 JSON 字符串未使用 `ensure_ascii=False`，导致中文字符被转义为 `\uXXXX` 格式，增加了字符串长度
+#   - `agent_loop()` 中只打印前200个字符，如果JSON字符串过长可能被截断
+
+                # Also clear this task's blocks list since it no longer blocks anything
+                task["blocks"] = []
         if add_blocked_by:
             task["blockedBy"] = list(set(task["blockedBy"] + add_blocked_by))
         if add_blocks:
@@ -83,7 +93,7 @@ class TaskManager:
                 except ValueError:
                     pass
         self._save(task)
-        return json.dumps(task, indent=2)
+        return json.dumps(task, ensure_ascii=False, indent=2)
 
     def _clear_dependency(self, completed_id: int):
         """Remove completed_id from all other tasks' blockedBy lists."""
