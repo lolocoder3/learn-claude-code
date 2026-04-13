@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "py",
+    "python.terminal.executeInFileDirectory": true,
+    "code-runner.executorMap": {
+        "python": "py"
+    }
+}
