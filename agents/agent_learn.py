@@ -3,8 +3,47 @@ from pathlib import Path
 import json
 import anthropic
 from dotenv import load_dotenv
+from opentelemetry.instrumentation.anthropic import AnthropicInstrumentor
+from langfuse import get_client
+
+# 为什么删了get_client 后， langfuse 就检测不到llm 对话了
+
+# 经过深入分析 Langfuse SDK 源码，我确认了 __`get_client()` 是必须的__。
+
+# __核心原因：__
+
+# `Langfuse` 类的 `__init__` 方法（第 227-350 行）才是真正初始化 OpenTelemetry tracer 的地方：
+
+# 1. 如果没有 `public_key`/`secret_key` → 设置 `NoOpTracer()` 并禁用 tracing
+# 2. 如果有凭证 → 创建 `LangfuseResourceManager`（管理 OTLP exporter、span processor 等）
+
+# `get_client()` 本质上是一&#x4E2A;__&#x5EF6;迟初始化函数__：
+
+# - 第 111-113 行：如果没有任何实例，调用 `Langfuse()` 创建
+# - 第 115-122 行：如果已有实例，返回它
+
+# __所以工作流程是：__
+
+# ```javascript
+# load_dotenv() 
+#     ↓
+# get_client()  ← 必须！这里才真正初始化 Langfuse
+#     ↓
+# Langfuse() 读取环境变量并创建 LangfuseResourceManager
+#     ↓
+# AnthropicInstrumentor().instrument() 使用已初始化的 tracer
+# ```
+
+# __删除 `get_client()` 后不工作的原因：__
+
+# 虽然 `AnthropicInstrumentor().instrument()` 会 patch Anthropic SDK 来捕获调用，但这些 spans 需要发送到 Langfuse。如果 `Langfuse` 从未初始化（没有 `LangfuseResourceManager`），spans 就没有 exporter 可以发送到 Langfuse 服务器。
+
+# __结论：__ `get_client()` 是启动 Langfuse 数据管道的触发器，__不能删除__。
+
 
 load_dotenv(override=True)
+AnthropicInstrumentor().instrument()
+langfuse = get_client()
 
 WORKDIR = Path.cwd()
 client = anthropic.Anthropic(base_url="https://api.deepseek.com/anthropic")
